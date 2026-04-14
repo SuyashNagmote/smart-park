@@ -40,7 +40,12 @@ function tryExec(database: Database.Database, sql: string) {
 export function getDb() {
 	if (db) return db;
 
-	db = new Database(getDbPath());
+	try {
+		db = new Database(getDbPath());
+	} catch {
+		db = new Database(':memory:');
+	}
+
 	db.pragma('journal_mode = WAL');
 
 	db.exec(`
