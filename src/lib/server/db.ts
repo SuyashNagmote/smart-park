@@ -9,10 +9,15 @@ function getDbPath() {
 	if (process.env.VERCEL || process.env.VERCEL_ENV) {
 		return ':memory:';
 	}
+
 	// keep DB out of src/; safe default for local dev
 	const dataDir = path.resolve(process.cwd(), 'data');
-	mkdirSync(dataDir, { recursive: true });
-	return path.join(dataDir, 'smartpark.db');
+	try {
+		mkdirSync(dataDir, { recursive: true });
+		return path.join(dataDir, 'smartpark.db');
+	} catch {
+		return ':memory:';
+	}
 }
 
 function tableColumns(database: Database.Database, table: string): Set<string> {
