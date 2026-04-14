@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Smart Park">
+  <rect width="64" height="64" rx="14" fill="#0f172a"/>
+  <path d="M22 46V18h14c6.3 0 10 3.6 10 9.2 0 5.7-3.7 9.2-10 9.2H30v9.6h-8Zm8-16h5.6c2.6 0 4.2-1.2 4.2-3.6 0-2.4-1.6-3.6-4.2-3.6H30V30Z" fill="#ffffff"/>
+</svg>
+
