@@ -5,6 +5,10 @@ import path from 'node:path';
 let db: Database.Database | null = null;
 
 function getDbPath() {
+	// For Vercel demo, use in-memory DB since filesystem is read-only
+	if (process.env.VERCEL || process.env.VERCEL_ENV) {
+		return ':memory:';
+	}
 	// keep DB out of src/; safe default for local dev
 	const dataDir = path.resolve(process.cwd(), 'data');
 	mkdirSync(dataDir, { recursive: true });
