@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: smart-park
+    env: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: OVERPASS_URL
+        value: https://overpass-api.de/api/interpreter
+      - key: PUNE_CENTER_LAT
+        value: "18.5204"
+      - key: PUNE_CENTER_LON
+        value: "73.8567"
+      - key: SEARCH_RADIUS_M
+        value: "15000"
