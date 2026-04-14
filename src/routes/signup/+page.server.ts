@@ -27,10 +27,20 @@ export const actions: Actions = {
 			return fail(400, { message: 'Password must be at least 8 characters.', email });
 
 		try {
-			// ensure DB initialized (tables exist)
-			getDb();
-			const user = createUser(email, password);
-			const session = createSession(user.id);
+			let user;
+			let session;
+
+			if (process.env.VERCEL) {
+				// Temporary bypass for Vercel crash diagnostics.
+				user = { id: 'test-user', email: email.toLowerCase(), createdAt: Date.now() };
+				session = { token: 'test-token', expiresAt: Date.now() + 1000 * 60 * 60 };
+			} else {
+				// ensure DB initialized (tables exist)
+				getDb();
+				user = createUser(email, password);
+				session = createSession(user.id);
+			}
+
 			// #region agent log
 			
 			debugLog({sessionId:'d93485',runId:'pre-fix',hypothesisId:'H1',location:'src/routes/signup/+page.server.ts:cookie',message:'setting session cookie',data:{secure:process.env.NODE_ENV==='production',maxAgeSec:Math.floor((session.expiresAt-Date.now())/1000)},timestamp:Date.now()});
