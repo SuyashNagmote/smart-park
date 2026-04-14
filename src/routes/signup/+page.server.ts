@@ -30,16 +30,10 @@ export const actions: Actions = {
 			let user;
 			let session;
 
-			if (process.env.VERCEL) {
-				// Temporary bypass for Vercel crash diagnostics.
-				user = { id: 'test-user', email: email.toLowerCase(), createdAt: Date.now() };
-				session = { token: 'test-token', expiresAt: Date.now() + 1000 * 60 * 60 };
-			} else {
-				// ensure DB initialized (tables exist)
-				getDb();
-				user = createUser(email, password);
-				session = createSession(user.id);
-			}
+// ensure DB initialized (tables exist)
+		getDb();
+		user = createUser(email, password);
+		session = createSession(user.id);
 
 			// #region agent log
 			
