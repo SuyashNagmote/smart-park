@@ -14,8 +14,8 @@
 	<title>Sign in | Smart Park</title>
 </svelte:head>
 
-<div class="min-h-[calc(100vh-0px)] flex items-center justify-center p-6">
-	<div class="w-full max-w-md sp-card p-6 sm:p-8 sp-pop">
+<div class="min-h-screen flex items-center justify-center px-4 py-18 sm:p-6">
+	<div class="w-full max-w-md sp-card p-5 sm:p-8 sp-pop">
 		<div class="mb-6">
 			<div class="flex items-center gap-3">
 				<div

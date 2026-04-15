@@ -57,15 +57,15 @@
 		<div class="absolute inset-0 opacity-80"></div>
 	</div>
 
-	<div class="fixed bottom-5 right-5 z-50">
+	<div class="fixed right-3 top-3 z-50 sm:bottom-5 sm:right-5 sm:top-auto">
 		<button
 			type="button"
-			class="sp-btn sp-glass px-4 py-2.5 text-sm font-semibold"
+			class="sp-btn sp-glass px-3 py-2 text-xs font-semibold sm:px-4 sm:py-2.5 sm:text-sm"
 			onclick={() => applyTheme(theme === 'dark' ? 'light' : 'dark')}
 			aria-label="Toggle theme"
 			title="Toggle theme"
 		>
-			<span class="i-bx-bulb inline-block mr-2 align-middle"></span>
+			<span class="i-bx-bulb inline-block mr-1.5 align-middle sm:mr-2"></span>
 			{theme === 'dark' ? 'Light' : 'Dark'}
 		</button>
 	</div>

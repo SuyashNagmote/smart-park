@@ -2,8 +2,8 @@
 	<title>Smart Park</title>
 </svelte:head>
 
-<div class="min-h-screen">
-	<header class="sp-shell pt-6">
+<div class="min-h-screen pb-8">
+	<header class="sp-shell pt-16 sm:pt-6">
 		<div class="sp-topbar sp-pop">
 			<div class="flex items-center gap-3 min-w-0">
 				<div
@@ -19,21 +19,21 @@
 					</div>
 				</div>
 			</div>
-			<nav class="flex items-center gap-2 sm:gap-3">
-				<a class="sp-pill" href="/login">Sign in</a>
-				<a class="sp-btn sp-btn-primary px-4 py-2.5 text-sm" href="/signup">Get started</a>
+			<nav class="flex items-center gap-2 sm:gap-3 max-sm:flex-col max-sm:items-stretch">
+				<a class="sp-pill max-sm:w-full" href="/login">Sign in</a>
+				<a class="sp-btn sp-btn-primary px-4 py-2.5 text-sm max-sm:w-full" href="/signup">Get started</a>
 			</nav>
 		</div>
 	</header>
 
-	<main class="sp-shell py-10">
+	<main class="sp-shell py-6 sm:py-10">
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 items-stretch">
 			<section class="sp-section sp-pop">
 				<div class="inline-flex items-center gap-2 sp-btn px-3 py-1.5 text-xs font-extrabold">
 					<span class="i-fa6-solid-bolt"></span>
 					Now serving Pune
 				</div>
-				<h1 class="mt-4 text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.05]">
+				<h1 class="mt-4 text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.05]">
 					Find parking faster. <span style="color: var(--sp-brand);">Pay smarter.</span>
 				</h1>
 				<p class="mt-4 text-base sm:text-lg" style="color: var(--sp-muted);">
