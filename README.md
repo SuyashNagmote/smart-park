@@ -1,7 +1,7 @@
 # Smart Park
 You can visit the final deployed project through this link ..
 
-smart-park-production.up.railway.app
+https://smart-park-production.up.railway.app/
 
 A user-friendly parking dashboard built with SvelteKit. It fetches public parking locations (OpenStreetMap/Overpass) and shows **live simulated availability + pricing updates** via server-sent events (SSE).
 
