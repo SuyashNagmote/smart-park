@@ -4,19 +4,22 @@
 		level,
 		currentTheme,
 		onToggleTheme,
+		hidden = false,
 	}: {
 		email: string | undefined;
 		level: number;
 		currentTheme: 'light' | 'dark';
 		onToggleTheme: () => void;
+		hidden?: boolean;
 	} = $props();
 </script>
 
+{#if !hidden}
 <header class="dash-topbar" aria-label="Mobile header">
 	<div class="dash-topbar-inner">
 		<div class="dash-topbar-brand">
 			<div class="dash-logo-mark-sm">SP</div>
-			<span class="dash-topbar-email">{email}</span>
+			<span class="dash-topbar-name">Smart Park</span>
 		</div>
 		<div class="dash-topbar-actions">
 			<!-- XP badge on mobile -->
@@ -27,7 +30,7 @@
 			<!-- Theme toggle on mobile -->
 			<button
 				type="button"
-				class="sp-btn sp-glass dash-mobile-theme"
+				class="dash-mobile-theme"
 				onclick={onToggleTheme}
 				aria-label="Toggle theme"
 			>
@@ -36,6 +39,7 @@
 		</div>
 	</div>
 </header>
+{/if}
 
 <style>
 /* ── Mobile top bar ──────────────────────────────────────────── */
@@ -77,13 +81,12 @@
   flex-shrink: 0;
 }
 
-.dash-topbar-email {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--sp-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.dash-topbar-name {
+  font-family: var(--sp-font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--sp-text);
 }
 
 .dash-topbar-actions {
@@ -107,9 +110,22 @@
 }
 
 .dash-mobile-theme {
-  padding: 8px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--sp-border);
+  background: var(--sp-surface-strong);
+  color: var(--sp-muted);
   font-size: 16px;
   cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.dash-mobile-theme:hover {
+  color: var(--sp-text);
+  background: color-mix(in srgb, var(--sp-border) 60%, transparent);
 }
 
 @media (max-width: 1023px) {

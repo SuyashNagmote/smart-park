@@ -266,7 +266,7 @@
 		display: grid;
 		grid-template-columns: 1fr;
 	}
-	@media (min-width: 768px) {
+	@media (min-width: 1024px) {
 		.auth-shell {
 			grid-template-columns: 45fr 55fr;
 		}
@@ -282,7 +282,7 @@
 		position: relative;
 		overflow: hidden;
 	}
-	@media (min-width: 768px) {
+	@media (min-width: 1024px) {
 		.auth-brand {
 			display: flex;
 		}
@@ -370,7 +370,7 @@
 		background: var(--sp-bg0);
 		min-height: 100svh;
 	}
-	@media (min-width: 768px) {
+	@media (min-width: 1024px) {
 		.auth-form {
 			min-height: auto;
 			padding: 48px 40px;

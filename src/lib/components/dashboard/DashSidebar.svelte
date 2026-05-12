@@ -91,6 +91,12 @@
   gap: 4px;
 }
 
+@media (max-width: 1023px) {
+  .dash-sidebar {
+    display: none;
+  }
+}
+
 .dash-sidebar-logo {
   display: flex;
   align-items: center;

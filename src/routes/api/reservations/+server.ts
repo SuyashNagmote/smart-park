@@ -78,9 +78,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	// ── Server-side lot validation ────────────────────────────
 	// Re-fetch lots from the authoritative source so the client
 	// cannot inject fake names, coordinates, or prices.
-	let lots: Awaited<ReturnType<typeof fetchPuneLots>>;
+	let lots: Awaited<ReturnType<typeof fetchLots>>;
 	try {
-		lots = await fetchPuneLots();
+		lots = await fetchLots();
 	} catch {
 		return json({ error: 'Could not verify lot data. Please try again.' }, { status: 503 });
 	}

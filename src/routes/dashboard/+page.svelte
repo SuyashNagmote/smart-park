@@ -626,7 +626,7 @@ onMount(() => {
   <DashSidebar {tab} {stats} {currentTheme} onTabChange={(t) => (tab = t)} onToggleTheme={toggleTheme} />
 
   <div class="dash-main">
-    <DashTopBar email={page.data.user?.email} level={stats?.level ?? 1} {currentTheme} onToggleTheme={toggleTheme} />
+    <DashTopBar email={page.data.user?.email} level={stats?.level ?? 1} {currentTheme} onToggleTheme={toggleTheme} hidden={tab === 'map'} />
 
     <div class="dash-content" class:is-map-tab={tab === 'map'}>
       {#if getActiveSession() !== null}

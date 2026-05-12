@@ -553,10 +553,10 @@
 	.booking-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 49;
-		background: rgba(0, 0, 0, 0.45);
-		backdrop-filter: blur(4px);
-		-webkit-backdrop-filter: blur(4px);
+		z-index: 9998;
+		background: rgba(0, 0, 0, 0.75);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
 	}
 
 	.booking-modal {
@@ -564,14 +564,14 @@
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
-		z-index: 50;
+		z-index: 9999;
 		width: min(520px, calc(100vw - 32px));
 		max-height: calc(100svh - 48px);
 		overflow-y: auto;
 		border-radius: 24px;
 		border: 1px solid var(--sp-border);
-		background: var(--sp-surface-strong);
-		box-shadow: 0 32px 120px rgba(0, 0, 0, 0.45);
+		background: #0a0a0a; /* Solid dark background to fix text bleed */
+		box-shadow: 0 32px 120px rgba(0, 0, 0, 0.75);
 		padding: 24px;
 		outline: none;
 	}
