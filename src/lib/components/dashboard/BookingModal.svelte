@@ -1,7 +1,6 @@
 <script lang="ts">
 	let {
 		lot,
-		step,
 		duration,
 		vehicle,
 		needsCharging,
@@ -10,8 +9,6 @@
 		busy,
 		error,
 		onClose,
-		onNext,
-		onBack,
 		onDurationChange,
 		onVehicleChange,
 		onChargingToggle,
@@ -19,13 +16,9 @@
 		onPriceChange,
 		onConfirm,
 		onStartTimeChange,
-		bindStep1El,
-		bindStep2El,
-		bindStep3El,
 		bindModalEl,
 	}: {
 		lot: any;
-		step: 1 | 2 | 3;
 		duration: number;
 		vehicle: 'car' | 'ev';
 		needsCharging: boolean;
@@ -34,8 +27,6 @@
 		busy: boolean;
 		error: string | null;
 		onClose: () => void;
-		onNext: () => void;
-		onBack: () => void;
 		onDurationChange: (h: number) => void;
 		onVehicleChange: (v: 'car' | 'ev') => void;
 		onChargingToggle: () => void;
@@ -43,21 +34,35 @@
 		onPriceChange: (p: 'standard' | 'flex' | 'green') => void;
 		onConfirm: () => void;
 		onStartTimeChange?: (ts: number) => void;
-		bindStep1El: (el: HTMLDivElement) => void;
-		bindStep2El: (el: HTMLDivElement) => void;
-		bindStep3El: (el: HTMLDivElement) => void;
 		bindModalEl: (el: HTMLDivElement) => void;
 	} = $props();
 
-	let step1El: HTMLDivElement | undefined = $state();
-	let step2El: HTMLDivElement | undefined = $state();
-	let step3El: HTMLDivElement | undefined = $state();
 	let modalEl: HTMLDivElement | undefined = $state();
-
-	$effect(() => { if (step1El) bindStep1El(step1El); });
-	$effect(() => { if (step2El) bindStep2El(step2El); });
-	$effect(() => { if (step3El) bindStep3El(step3El); });
 	$effect(() => { if (modalEl) bindModalEl(modalEl); });
+
+	// ── Step state — fully owned by the modal ────────────────────
+	let internalStep = $state<1 | 2 | 3 | 4>(1);
+
+	function goNext() {
+		if (internalStep < 3) internalStep = (internalStep + 1) as 2 | 3;
+	}
+
+	function goBack() {
+		if (internalStep > 1) internalStep = (internalStep - 1) as 1 | 2 | 3;
+	}
+
+	function goToPayment() {
+		internalStep = 4;
+	}
+
+	function handlePaid() {
+		onConfirm();
+	}
+
+	// Reset step when modal opens (lot changes = new booking)
+	$effect(() => {
+		if (lot) internalStep = 1;
+	});
 
 	// ── Start time state ─────────────────────────────────────────
 	let startMode = $state<'now' | 'schedule'>('now');
@@ -116,29 +121,6 @@
 		const n = parseInt(val, 10);
 		if (!isNaN(n) && n >= 1) onSlotChange(n);
 		else onSlotChange(null);
-	}
-
-	// ── Payment step state ───────────────────────────────────────
-	// Internal 4-step flow: 1=Duration, 2=Price, 3=Confirm, 4=Pay
-	let internalStep = $state<1 | 2 | 3 | 4>(1);
-	let paymentDone = $state(false);
-
-	// Keep internalStep in sync with parent step prop (parent controls 1-3)
-	$effect(() => {
-		if (step !== internalStep && step <= 3) {
-			internalStep = step;
-			paymentDone = false;
-		}
-	});
-
-	function goToPayment() {
-		internalStep = 4;
-		paymentDone = false;
-	}
-
-	function handlePaid() {
-		paymentDone = true;
-		onConfirm();
 	}
 
 	// ── UPI QR ───────────────────────────────────────────────────
@@ -224,7 +206,6 @@
 			<div
 				class="booking-step"
 				class:is-active={internalStep === 1}
-				bind:this={step1El}
 				aria-hidden={internalStep !== 1}
 			>
 				<!-- Start time picker -->
@@ -349,7 +330,7 @@
 					<button
 						type="button"
 						class="sp-btn sp-btn-primary booking-next-btn"
-						onclick={onNext}
+						onclick={goNext}
 					>Next →</button>
 				</div>
 			</div>
@@ -358,7 +339,6 @@
 			<div
 				class="booking-step"
 				class:is-active={internalStep === 2}
-				bind:this={step2El}
 				aria-hidden={internalStep !== 2}
 			>
 				<div class="booking-field-group">
@@ -384,8 +364,8 @@
 				</div>
 
 				<div class="booking-step-nav booking-step-nav--split">
-					<button type="button" class="sp-btn booking-back-btn" onclick={onBack}>← Back</button>
-					<button type="button" class="sp-btn sp-btn-primary booking-next-btn" onclick={onNext}>Next →</button>
+					<button type="button" class="sp-btn booking-back-btn" onclick={goBack}>← Back</button>
+					<button type="button" class="sp-btn sp-btn-primary booking-next-btn" onclick={goNext}>Next →</button>
 				</div>
 			</div>
 
@@ -393,7 +373,6 @@
 			<div
 				class="booking-step"
 				class:is-active={internalStep === 3}
-				bind:this={step3El}
 				aria-hidden={internalStep !== 3}
 			>
 				{#if internalStep === 3}
@@ -437,7 +416,7 @@
 					{/if}
 
 					<div class="booking-step-nav booking-step-nav--split">
-						<button type="button" class="sp-btn booking-back-btn" onclick={onBack} disabled={busy}>← Back</button>
+						<button type="button" class="sp-btn booking-back-btn" onclick={goBack} disabled={busy}>← Back</button>
 						<button
 							type="button"
 							class="sp-btn sp-btn-primary booking-confirm-btn"
@@ -514,8 +493,7 @@
 							class="sp-btn booking-back-btn"
 							onclick={() => { internalStep = 3; }}
 							disabled={busy}
-						>← Back</button>
-						<button
+						>← Back</button>						<button
 							type="button"
 							class="sp-btn sp-btn-primary booking-confirm-btn"
 							onclick={handlePaid}

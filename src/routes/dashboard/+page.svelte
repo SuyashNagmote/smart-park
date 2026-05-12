@@ -43,7 +43,6 @@ let bookingSlot = $state<number | null>(null);
 let bookingStep = $state<1 | 2 | 3>(1);
 let bookingError = $state<string | null>(null);
 let bookingModalEl: HTMLDivElement | undefined = $state();
-let bookingStepEls: (HTMLDivElement | undefined)[] = $state([undefined, undefined, undefined]);
 
 let parkingLots = $state<ParkingLot[]>([]);
 let liveEvents = $state<{ type: string; lot: ParkingLot; timestamp: string }[]>([]);
@@ -321,7 +320,6 @@ async function refreshReservationsAndStats() {
 // ── Booking functions ────────────────────────────────────────
 async function bookSelectedLot() {
   if (!selectedLotData) return;
-  bookingStep = 1;
   bookingError = null;
   bookingOpen = true;
   await tick();
@@ -354,22 +352,6 @@ async function confirmBooking() {
   } finally {
     bookingBusy = false;
   }
-}
-
-async function goToBookingStep(next: 2 | 3 | 1 | 2) {
-  const dir = (next as number) > bookingStep ? -1 : 1;
-  const currentEl = bookingStepEls[bookingStep - 1];
-  const nextEl = bookingStepEls[(next as number) - 1];
-
-  if (!currentEl || !nextEl) {
-    bookingStep = next as 1 | 2 | 3;
-    return;
-  }
-
-  await gsap.to(currentEl, { x: `${dir * -60}%`, opacity: 0, duration: 0.18, ease: 'power2.in' });
-  bookingStep = next as 1 | 2 | 3;
-  await tick();
-  gsap.fromTo(nextEl, { x: `${dir * 60}%`, opacity: 0 }, { x: '0%', opacity: 1, duration: 0.22, ease: 'power2.out' });
 }
 
 function closeBookingModal() {
@@ -841,7 +823,6 @@ onMount(() => {
 {#if bookingOpen}
   <BookingModal
     lot={selectedLotData}
-    step={bookingStep}
     duration={bookingDuration}
     vehicle={bookingVehicle}
     needsCharging={bookingNeedsCharging}
@@ -850,8 +831,6 @@ onMount(() => {
     busy={bookingBusy}
     error={bookingError}
     onClose={closeBookingModal}
-    onNext={() => goToBookingStep((bookingStep + 1) as 2 | 3)}
-    onBack={() => goToBookingStep((bookingStep - 1) as 1 | 2)}
     onDurationChange={(h) => (bookingDuration = h)}
     onVehicleChange={(v) => (bookingVehicle = v)}
     onChargingToggle={() => (bookingNeedsCharging = !bookingNeedsCharging)}
@@ -859,9 +838,6 @@ onMount(() => {
     onPriceChange={(p) => (selectedPriceId = p)}
     onConfirm={confirmBooking}
     onStartTimeChange={(ts) => (bookingStartTime = ts)}
-    bindStep1El={(el) => (bookingStepEls[0] = el)}
-    bindStep2El={(el) => (bookingStepEls[1] = el)}
-    bindStep3El={(el) => (bookingStepEls[2] = el)}
     bindModalEl={(el) => (bookingModalEl = el)}
   />
 {/if}
