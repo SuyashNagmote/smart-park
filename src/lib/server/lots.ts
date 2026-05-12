@@ -15,7 +15,7 @@ export interface ParkingLot {
 	hourlyRate?: number;
 }
 
-function mockLots(count = 60): ParkingLot[] {
+function mockLots(lat: number, lon: number, count = 60): ParkingLot[] {
 	const lots: ParkingLot[] = [];
 	for (let i = 0; i < count; i++) {
 		const idNum = 100000 + i;
@@ -27,9 +27,9 @@ function mockLots(count = 60): ParkingLot[] {
 		lots.push({
 			id: `mock-${idNum}`,
 			name: `Parking ${String.fromCharCode(65 + (i % 26))}-${(i % 9) + 1}`,
-			area: ['Kothrud', 'Shivajinagar', 'Baner', 'Hadapsar', 'Swargate', 'Viman Nagar'][i % 6],
-			lat: PUNE_CENTER[0] + (Math.sin(i * 0.8) * 0.06 + (i % 7) * 0.002),
-			lon: PUNE_CENTER[1] + (Math.cos(i * 0.7) * 0.06 + (i % 5) * 0.002),
+			area: ['North Zone', 'South Zone', 'East Zone', 'West Zone', 'Central', 'Plaza'][i % 6],
+			lat: lat + (Math.sin(i * 0.8) * 0.06 + (i % 7) * 0.002),
+			lon: lon + (Math.cos(i * 0.7) * 0.06 + (i % 5) * 0.002),
 			capacity,
 			available: Math.max(0, Math.floor(capacity * (0.2 + ((i * 13) % 60) / 100))),
 			ev,
@@ -76,13 +76,13 @@ function normalize(node: any): ParkingLot | null {
 	};
 }
 
-export async function fetchPuneLots(): Promise<ParkingLot[]> {
+export async function fetchLots(lat: number = PUNE_CENTER[0], lon: number = PUNE_CENTER[1]): Promise<ParkingLot[]> {
 	const query = `
 [out:json][timeout:25];
 (
-  node["amenity"="parking"](around:${SEARCH_RADIUS_M},${PUNE_CENTER[0]},${PUNE_CENTER[1]});
-  way["amenity"="parking"](around:${SEARCH_RADIUS_M},${PUNE_CENTER[0]},${PUNE_CENTER[1]});
-  node["park_ride"="yes"](around:${SEARCH_RADIUS_M},${PUNE_CENTER[0]},${PUNE_CENTER[1]});
+  node["amenity"="parking"](around:${SEARCH_RADIUS_M},${lat},${lon});
+  way["amenity"="parking"](around:${SEARCH_RADIUS_M},${lat},${lon});
+  node["park_ride"="yes"](around:${SEARCH_RADIUS_M},${lat},${lon});
 );
 out center tags 120;`;
 
@@ -96,12 +96,12 @@ out center tags 120;`;
 
 		if (!res.ok) {
 			// Fallback to mock lots so the map always works during rate limits/timeouts.
-			return mockLots();
+			return mockLots(lat, lon);
 		}
 
 		data = await res.json();
 	} catch {
-		return mockLots();
+		return mockLots(lat, lon);
 	}
 	const dedup = new Map<string, ParkingLot>();
 

@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 import { onMount, tick } from 'svelte';
 import { page } from '$app/state';
 import type { ParkingLot } from '$lib/server/lots';
@@ -520,7 +520,10 @@ onMount(() => {
   // Geolocation
   if (typeof navigator !== 'undefined' && navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => { userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude }; },
+      (pos) => { 
+        userPos = { lat: pos.coords.latitude, lon: pos.coords.longitude }; 
+        refreshAll(userPos.lat, userPos.lon); // Fetch local lots immediately!
+      },
       () => {},
       { timeout: 8000 }
     );
@@ -712,7 +715,8 @@ onMount(() => {
             errorMessage = null;
             lotsLoading = true;
             try {
-              const res = await fetch('/api/lots');
+              const url = userPos ? `/api/lots?lat=${userPos.lat}&lon=${userPos.lon}` : '/api/lots';
+              const res = await fetch(url);
               const data = await res.json();
               if (data.lots) parkingLots = data.lots;
             } catch {

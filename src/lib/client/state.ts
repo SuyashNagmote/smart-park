@@ -40,9 +40,10 @@ function nowTime() {
 	return new Date().toLocaleTimeString();
 }
 
-export async function refreshAll() {
+export async function refreshAll(lat?: number, lon?: number) {
+	const lotsUrl = (lat && lon) ? `/api/lots?lat=${lat}&lon=${lon}` : '/api/lots';
 	const [l, r, st, q] = await Promise.all([
-		fetch('/api/lots').then((x) => x.json()).catch(() => null),
+		fetch(lotsUrl).then((x) => x.json()).catch(() => null),
 		fetch('/api/reservations').then((x) => x.json()).catch(() => null),
 		fetch('/api/reservations?type=stats').then((x) => x.json()).catch(() => null),
 		fetch('/api/quests').then((x) => x.json()).catch(() => null),

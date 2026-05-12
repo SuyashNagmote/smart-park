@@ -14,7 +14,7 @@ import {
 	type VehicleType,
 } from '$lib/server/reservations';
 import { updateQuestProgressOnBooking } from '$lib/server/quests';
-import { fetchPuneLots } from '$lib/server/lots';
+import { fetchLots } from '$lib/server/lots';
 import { calculateDynamicPricing } from '$lib/server/engine';
 
 // ── Price tier helpers ────────────────────────────────────────
@@ -200,7 +200,7 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 		// Re-fetch lot to get authoritative base rate
 		let pricePerHour: number;
 		try {
-			const lots = await fetchPuneLots();
+			const lots = await fetchLots();
 			// We need the lotId from the existing reservation — look it up
 			const { getDb } = await import('$lib/server/db');
 			const db = getDb();

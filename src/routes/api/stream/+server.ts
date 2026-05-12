@@ -1,5 +1,5 @@
 import { generateSSEMessage, calculateDynamicPricing } from '$lib/server/engine';
-import { fetchPuneLots } from '$lib/server/lots';
+import { fetchLots } from '$lib/server/lots';
 
 export async function GET() {
 	let interval: any;
@@ -7,7 +7,7 @@ export async function GET() {
 	const stream = new ReadableStream({
 		async start(controller) {
 			try {
-				const lots = await fetchPuneLots();
+				const lots = await fetchLots();
 
 				// Send initial state
 				controller.enqueue(
