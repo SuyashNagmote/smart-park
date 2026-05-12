@@ -91,7 +91,7 @@ export async function book(payload: {
 	needsCharging: boolean;
 	slotNumber: number | null;
 	durationHours: number;
-	pricePerHour: number;
+	priceId: string;
 }) {
 	const lot = payload.lot;
 
@@ -109,16 +109,11 @@ export async function book(payload: {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				lotId: lot.id,
-				lotName: lot.name,
-				lotArea: lot.area,
-				lat: lot.lat,
-				lon: lot.lon,
 				vehicleType: payload.vehicleType,
 				needsCharging: payload.needsCharging,
 				slotNumber: payload.slotNumber,
-				startTime: Date.now(),
 				durationHours: payload.durationHours,
-				pricePerHour: payload.pricePerHour,
+				priceId: payload.priceId,
 			}),
 		});
 		const data = await res.json();

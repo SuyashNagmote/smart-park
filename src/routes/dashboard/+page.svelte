@@ -318,15 +318,13 @@ async function confirmBooking() {
   bookingBusy = true;
   bookingError = null;
   try {
-    const prices = optionPrices(selectedLotData);
-    const priceOpt = prices.find((p) => p.id === selectedPriceId) ?? prices[0];
     const result = await bookAction({
       lot: selectedLotData,
       vehicleType: bookingVehicle,
       needsCharging: bookingNeedsCharging,
       slotNumber: bookingSlot,
       durationHours: bookingDuration,
-      pricePerHour: priceOpt.perHour,
+      priceId: selectedPriceId,
     });
     if (result.ok) {
       closeBookingModal();

@@ -236,7 +236,7 @@ export function createReservation(input: {
 	durationHours: number;
 	pricePerHour: number;
 	totalPrice: number;
-}) {
+}): Reservation {
 	const db = getDb();
 	const createdAt = now();
 	const res: Reservation = {
@@ -294,6 +294,54 @@ export function createReservation(input: {
 	});
 
 	return res;
+}
+
+/**
+ * Atomically checks slot availability and creates the reservation inside a
+ * single SQLite transaction, eliminating the check-then-insert race condition.
+ */
+export function createReservationAtomic(input: {
+	userId: string;
+	lotId: string;
+	lotName: string;
+	lotArea: string;
+	lat: number;
+	lon: number;
+	vehicleType: VehicleType;
+	needsCharging: boolean;
+	slotNumber: number | null;
+	startTime: number;
+	durationHours: number;
+	pricePerHour: number;
+	totalPrice: number;
+}): { ok: true; reservation: Reservation } | { ok: false; reason: 'slot_taken' | 'error' } {
+	const db = getDb();
+
+	let reservation: Reservation | null = null;
+
+	const txn = db.transaction(() => {
+		// Re-check slot availability inside the transaction (prevents race)
+		if (input.slotNumber !== null) {
+			if (isSlotTaken({
+				lotId: input.lotId,
+				slotNumber: input.slotNumber,
+				startTime: input.startTime,
+				durationHours: input.durationHours,
+			})) {
+				return 'slot_taken';
+			}
+		}
+		reservation = createReservation(input);
+		return 'ok';
+	});
+
+	try {
+		const result = txn();
+		if (result === 'slot_taken') return { ok: false, reason: 'slot_taken' };
+		return { ok: true, reservation: reservation! };
+	} catch {
+		return { ok: false, reason: 'error' };
+	}
 }
 
 export function cancelReservation(userId: string, reservationId: string) {
