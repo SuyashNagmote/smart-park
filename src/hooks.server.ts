@@ -13,6 +13,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const isPublic =
 		PUBLIC_PATHS.has(pathname) ||
 		pathname.startsWith('/api/') ||
+		pathname.startsWith('/auth/') ||
 		pathname.startsWith('/_app/') ||
 		pathname.startsWith('/favicon') ||
 		pathname.startsWith('/assets/') ||

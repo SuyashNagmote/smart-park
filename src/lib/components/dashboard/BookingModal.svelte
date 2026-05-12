@@ -61,9 +61,15 @@
 		onConfirm();
 	}
 
-	// Reset step when modal opens (lot changes = new booking)
+	// Reset step when a DIFFERENT lot is selected (not on every reactive tick)
+	let prevLotId = $state<string | null>(null);
 	$effect(() => {
-		if (lot) internalStep = 1;
+		const currentLotId = lot?.id ?? null;
+		if (currentLotId && currentLotId !== prevLotId) {
+			internalStep = 1;
+			lastQrAmount = 0; // reset QR cache for new lot
+		}
+		prevLotId = currentLotId;
 	});
 
 	// ── Start time state ─────────────────────────────────────────

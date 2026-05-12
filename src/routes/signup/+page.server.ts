@@ -2,7 +2,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { createSession, createUser } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
-import { debugLog } from '$lib/server/debuglog';
+import { checkRateLimit, getClientIp } from '$lib/server/rate-limit';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user) throw redirect(303, '/dashboard');
@@ -10,15 +10,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async (event) => {
+		const { request, cookies } = event;
 		const form = await request.formData();
 		const email = String(form.get('email') ?? '').trim();
 		const password = String(form.get('password') ?? '');
-
-		// #region agent log
-		
-		debugLog({sessionId:'d93485',runId:'pre-fix',hypothesisId:'H1/H3',location:'src/routes/signup/+page.server.ts:action',message:'signup action invoked',data:{hasEmail:Boolean(email),passwordLen:password?.length??0},timestamp:Date.now()});
-		// #endregion
 
 		if (!email || !password)
 			return fail(400, { message: 'Email and password are required.', email });
@@ -26,19 +22,23 @@ export const actions: Actions = {
 		if (password.length < 8)
 			return fail(400, { message: 'Password must be at least 8 characters.', email });
 
+		// ── Rate limiting ────────────────────────────────────────
+		const ip = getClientIp(event);
+		const rl = checkRateLimit('signup', ip);
+		if (!rl.allowed) {
+			const mins = Math.ceil(rl.retryAfterSec / 60);
+			return fail(429, {
+				message: `Too many signup attempts. Try again in ${mins} minute${mins > 1 ? 's' : ''}.`,
+				email,
+			});
+		}
+
 		try {
-			let user;
-			let session;
+			// ensure DB initialized (tables exist)
+			getDb();
+			const user = createUser(email, password);
+			const session = createSession(user.id);
 
-// ensure DB initialized (tables exist)
-		getDb();
-		user = createUser(email, password);
-		session = createSession(user.id);
-
-			// #region agent log
-			
-			debugLog({sessionId:'d93485',runId:'pre-fix',hypothesisId:'H1',location:'src/routes/signup/+page.server.ts:cookie',message:'setting session cookie',data:{secure:process.env.NODE_ENV==='production',maxAgeSec:Math.floor((session.expiresAt-Date.now())/1000)},timestamp:Date.now()});
-			// #endregion
 			cookies.set('sp_session', session.token, {
 				path: '/',
 				httpOnly: true,
@@ -58,10 +58,6 @@ export const actions: Actions = {
 			return fail(500, { message: 'Could not create account. Please try again.', email });
 		}
 
-		// #region agent log
-	
-		debugLog({sessionId:'d93485',runId:'pre-fix',hypothesisId:'H1/H2',location:'src/routes/signup/+page.server.ts:redirect',message:'redirecting to dashboard after signup',data:{to:'/dashboard'},timestamp:Date.now()});
-		// #endregion
 		throw redirect(303, '/dashboard');
 	},
 };

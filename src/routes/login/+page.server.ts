@@ -1,6 +1,7 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { createSession, verifyUser } from '$lib/server/auth';
+import { checkRateLimit, getClientIp } from '$lib/server/rate-limit';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user) throw redirect(303, '/dashboard');
@@ -8,7 +9,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	default: async (event) => {
+		const { request, cookies } = event;
 		const form = await request.formData();
 		const email = String(form.get('email') ?? '').trim();
 		const password = String(form.get('password') ?? '');
@@ -16,6 +18,17 @@ export const actions: Actions = {
 
 		if (!email || !password) {
 			return fail(400, { message: 'Email and password are required.', email });
+		}
+
+		// ── Rate limiting ────────────────────────────────────────
+		const ip = getClientIp(event);
+		const rl = checkRateLimit('login', ip);
+		if (!rl.allowed) {
+			const mins = Math.ceil(rl.retryAfterSec / 60);
+			return fail(429, {
+				message: `Too many login attempts. Try again in ${mins} minute${mins > 1 ? 's' : ''}.`,
+				email,
+			});
 		}
 
 		const user = verifyUser(email, password);

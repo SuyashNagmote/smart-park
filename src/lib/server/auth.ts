@@ -88,3 +88,44 @@ export function getUserBySession(token: string): User | null {
 
 	return row ?? null;
 }
+
+/**
+ * Find or create a user from a Google OAuth profile.
+ * Priority: match by google_id → match by email (link accounts) → create new.
+ */
+export function findOrCreateGoogleUser(googleId: string, email: string): User {
+	const db = getDb();
+	const lowerEmail = email.toLowerCase();
+
+	// 1. Already linked by google_id
+	const byGoogle = db
+		.prepare(
+			`SELECT id, email, created_at as createdAt FROM users WHERE google_id = ?`,
+		)
+		.get(googleId) as User | undefined;
+
+	if (byGoogle) return byGoogle;
+
+	// 2. Existing email-password user → link Google ID
+	const byEmail = db
+		.prepare(
+			`SELECT id, email, created_at as createdAt FROM users WHERE email = ?`,
+		)
+		.get(lowerEmail) as User | undefined;
+
+	if (byEmail) {
+		db.prepare(`UPDATE users SET google_id = ? WHERE id = ?`).run(googleId, byEmail.id);
+		return byEmail;
+	}
+
+	// 3. Brand new user
+	const id = randomId('usr');
+	const createdAt = now();
+
+	db.prepare(
+		`INSERT INTO users (id, email, password_hash, google_id, created_at)
+		 VALUES (@id, @email, @passwordHash, @googleId, @createdAt)`,
+	).run({ id, email: lowerEmail, passwordHash: '', googleId, createdAt });
+
+	return { id, email: lowerEmail, createdAt };
+}

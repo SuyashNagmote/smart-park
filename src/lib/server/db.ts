@@ -52,7 +52,8 @@ export function getDb() {
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT NOT NULL DEFAULT '',
+  google_id TEXT UNIQUE,
   created_at INTEGER NOT NULL
 );
 
@@ -131,6 +132,10 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 	if (!resCols.has('session_ended_at')) tryExec(db, `ALTER TABLE reservations ADD COLUMN session_ended_at INTEGER`);
 	if (!resCols.has('actual_total_price'))
 		tryExec(db, `ALTER TABLE reservations ADD COLUMN actual_total_price INTEGER`);
+
+	const userCols = tableColumns(db, 'users');
+	if (!userCols.has('google_id'))
+		tryExec(db, `ALTER TABLE users ADD COLUMN google_id TEXT UNIQUE`);
 
 	const questCols = tableColumns(db, 'user_quests');
 	if (questCols.size === 0) {
