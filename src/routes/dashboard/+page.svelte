@@ -76,6 +76,7 @@ let showOnboarding = $state(false);
 
 // ── Map state ────────────────────────────────────────────────
 let map: any;
+let tileLayerRef: any = null;
 let markers: Record<string, any> = {};
 let targetMarker: any | null = null;
 let clusterLayer: any | null = null;
@@ -128,6 +129,21 @@ function toggleTheme() {
   currentTheme = next;
   document.documentElement.dataset.theme = next;
   try { localStorage.setItem('sp_theme', next); } catch {}
+
+  // Swap map tile layer to match the new theme
+  if (map && tileLayerRef) {
+    try { map.removeLayer(tileLayerRef); } catch {}
+  }
+  if (map) {
+    const url = next === 'dark'
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    const L = (window as any)._leaflet_L;
+    if (L) {
+      tileLayerRef = L.tileLayer(url, { maxZoom: 19, subdomains: 'abcd' });
+      tileLayerRef.addTo(map);
+    }
+  }
 }
 
 function showToast(title: string, message?: string) {
@@ -543,10 +559,15 @@ onMount(() => {
       }
 
       map = L.map(mapContainer, { zoomControl: true, attributionControl: false });
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      const tileUrl = currentTheme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      tileLayerRef = L.tileLayer(tileUrl, {
         maxZoom: 19,
         subdomains: 'abcd',
       }).addTo(map);
+      // Expose L for theme toggle
+      (window as any)._leaflet_L = L;
 
       // @ts-ignore
       clusterLayer = (L as any).markerClusterGroup?.({ maxClusterRadius: 40, disableClusteringAtZoom: 16 });
