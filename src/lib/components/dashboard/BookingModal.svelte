@@ -38,7 +38,9 @@
 	} = $props();
 
 	let modalEl: HTMLDivElement | undefined = $state();
-	$effect(() => { if (modalEl) bindModalEl(modalEl); });
+	$effect(() => {
+		if (modalEl) bindModalEl(modalEl);
+	});
 
 	// ── Step state — fully owned by the modal ────────────────────
 	let internalStep = $state<1 | 2 | 3 | 4>(1);
@@ -100,8 +102,11 @@
 		startMode === 'now'
 			? 'Now'
 			: scheduledDatetime
-				? new Date(scheduledDatetime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-				: 'Not set'
+				? new Date(scheduledDatetime).toLocaleString(undefined, {
+						dateStyle: 'medium',
+						timeStyle: 'short',
+					})
+				: 'Not set',
 	);
 
 	// ── Slot picker state ────────────────────────────────────────
@@ -123,7 +128,9 @@
 		else onSlotChange(null);
 	}
 
-	// ── UPI QR ───────────────────────────────────────────────────
+	// ── UPI QR (client-side generation) ──────────────────────────
+	import QRCode from 'qrcode';
+
 	const UPI_ID = '9325108742@ybl';
 	const UPI_NAME = 'SmartPark';
 
@@ -133,11 +140,24 @@
 		return `upi://pay?pa=${UPI_ID}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
 	}
 
-	function qrImageUrl(amount: number): string {
-		const data = encodeURIComponent(upiUrl(amount));
-		// Using Google Charts QR API (no npm package needed)
-		return `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${data}&choe=UTF-8`;
-	}
+	let qrCanvas: HTMLCanvasElement | undefined = $state();
+	let lastQrAmount = $state(0);
+
+	$effect(() => {
+		if (internalStep !== 4 || !lot || !qrCanvas) return;
+		const priceOpt = optionPrices(lot).find((o) => o.id === priceId) ?? optionPrices(lot)[0];
+		const total = Math.round(priceOpt.perHour * duration);
+		if (total === lastQrAmount && qrCanvas.dataset.rendered === 'true') return;
+		lastQrAmount = total;
+		const url = upiUrl(total);
+		QRCode.toCanvas(qrCanvas, url, {
+			width: 200,
+			margin: 2,
+			color: { dark: '#000000', light: '#ffffff' }
+		}).then(() => {
+			if (qrCanvas) qrCanvas.dataset.rendered = 'true';
+		});
+	});
 
 	function optionPrices(l: any) {
 		const base = l.hourlyRate ?? 50;
@@ -152,11 +172,7 @@
 </script>
 
 <!-- Backdrop -->
-<div
-	class="booking-backdrop"
-	onclick={() => !busy && onClose()}
-	aria-hidden="true"
-></div>
+<div class="booking-backdrop" onclick={() => !busy && onClose()} aria-hidden="true"></div>
 
 <!-- Modal card -->
 <div
@@ -180,14 +196,18 @@
 			type="button"
 			onclick={onClose}
 			disabled={busy}
-			aria-label="Close booking dialog"
-		>✕</button>
+			aria-label="Close booking dialog">✕</button
+		>
 	</div>
 
 	<!-- Progress indicator -->
 	<div class="booking-progress" aria-label="Step {internalStep} of 4">
-		{#each ([1, 2, 3, 4] as const) as s}
-			<div class="booking-progress-step" class:is-active={internalStep === s} class:is-done={internalStep > s}>
+		{#each [1, 2, 3, 4] as const as s}
+			<div
+				class="booking-progress-step"
+				class:is-active={internalStep === s}
+				class:is-done={internalStep > s}
+			>
 				<div class="booking-progress-dot">
 					{#if internalStep > s}✓{:else}{s}{/if}
 				</div>
@@ -216,14 +236,14 @@
 							type="button"
 							class="sp-pill booking-pill"
 							class:is-selected={startMode === 'now'}
-							onclick={() => setStartMode('now')}
-						>Now</button>
+							onclick={() => setStartMode('now')}>Now</button
+						>
 						<button
 							type="button"
 							class="sp-pill booking-pill"
 							class:is-selected={startMode === 'schedule'}
-							onclick={() => setStartMode('schedule')}
-						>Schedule</button>
+							onclick={() => setStartMode('schedule')}>Schedule</button
+						>
 					</div>
 					{#if startMode === 'schedule'}
 						<input
@@ -246,8 +266,8 @@
 								type="button"
 								class="sp-pill booking-pill"
 								class:is-selected={duration === h}
-								onclick={() => onDurationChange(h)}
-							>{h}h</button>
+								onclick={() => onDurationChange(h)}>{h}h</button
+							>
 						{/each}
 					</div>
 				</div>
@@ -259,15 +279,15 @@
 							type="button"
 							class="sp-pill booking-pill"
 							class:is-selected={vehicle === 'car'}
-							onclick={() => onVehicleChange('car')}
-						>🚗 Car</button>
+							onclick={() => onVehicleChange('car')}>🚗 Car</button
+						>
 						<button
 							type="button"
 							class="sp-pill booking-pill"
 							class:is-selected={vehicle === 'ev'}
 							onclick={() => onVehicleChange('ev')}
-							disabled={!lot.ev}
-						>⚡ EV</button>
+							disabled={!lot.ev}>⚡ EV</button
+						>
 					</div>
 					{#if !lot.ev}
 						<p class="booking-hint">This lot does not support EV charging.</p>
@@ -298,16 +318,16 @@
 							class="slot-btn slot-btn--any"
 							class:is-selected={slot === null}
 							onclick={() => handleSlotSelect(null)}
-							title="Any available slot"
-						>Any</button>
+							title="Any available slot">Any</button
+						>
 						{#each Array.from({ length: slotCount() }, (_, i) => i + 1) as n}
 							<button
 								type="button"
 								class="slot-btn"
 								class:is-selected={slot === n}
 								onclick={() => handleSlotSelect(n)}
-								title="Slot {n}"
-							>{n}</button>
+								title="Slot {n}">{n}</button
+							>
 						{/each}
 					</div>
 					{#if (lot.capacity ?? 0) > 20}
@@ -327,11 +347,9 @@
 				</div>
 
 				<div class="booking-step-nav">
-					<button
-						type="button"
-						class="sp-btn sp-btn-primary booking-next-btn"
-						onclick={goNext}
-					>Next →</button>
+					<button type="button" class="sp-btn sp-btn-primary booking-next-btn" onclick={goNext}
+						>Next →</button
+					>
 				</div>
 			</div>
 
@@ -352,7 +370,9 @@
 								onclick={() => onPriceChange(opt.id as 'standard' | 'flex' | 'green')}
 							>
 								<div class="booking-price-label">{opt.label}</div>
-								<div class="booking-price-amount">₹{opt.perHour}<span class="booking-price-unit">/hr</span></div>
+								<div class="booking-price-amount">
+									₹{opt.perHour}<span class="booking-price-unit">/hr</span>
+								</div>
 								<div class="booking-price-desc">
 									{#if opt.id === 'standard'}Flat rate, no surprises.
 									{:else if opt.id === 'flex'}Priority access during peak hours.
@@ -365,7 +385,9 @@
 
 				<div class="booking-step-nav booking-step-nav--split">
 					<button type="button" class="sp-btn booking-back-btn" onclick={goBack}>← Back</button>
-					<button type="button" class="sp-btn sp-btn-primary booking-next-btn" onclick={goNext}>Next →</button>
+					<button type="button" class="sp-btn sp-btn-primary booking-next-btn" onclick={goNext}
+						>Next →</button
+					>
 				</div>
 			</div>
 
@@ -376,7 +398,8 @@
 				aria-hidden={internalStep !== 3}
 			>
 				{#if internalStep === 3}
-					{@const priceOpt = optionPrices(lot).find(o => o.id === priceId) ?? optionPrices(lot)[0]}
+					{@const priceOpt =
+						optionPrices(lot).find((o) => o.id === priceId) ?? optionPrices(lot)[0]}
 					{@const total = Math.round(priceOpt.perHour * duration)}
 					<div class="booking-summary-card">
 						<div class="booking-summary-row">
@@ -393,7 +416,9 @@
 						</div>
 						<div class="booking-summary-row">
 							<span class="booking-summary-key">Vehicle</span>
-							<span class="booking-summary-val">{vehicle === 'ev' ? 'EV' : 'Car'}{needsCharging ? ' + Charging' : ''}</span>
+							<span class="booking-summary-val"
+								>{vehicle === 'ev' ? 'EV' : 'Car'}{needsCharging ? ' + Charging' : ''}</span
+							>
 						</div>
 						{#if slot !== null}
 							<div class="booking-summary-row">
@@ -416,7 +441,9 @@
 					{/if}
 
 					<div class="booking-step-nav booking-step-nav--split">
-						<button type="button" class="sp-btn booking-back-btn" onclick={goBack} disabled={busy}>← Back</button>
+						<button type="button" class="sp-btn booking-back-btn" onclick={goBack} disabled={busy}
+							>← Back</button
+						>
 						<button
 							type="button"
 							class="sp-btn sp-btn-primary booking-confirm-btn"
@@ -436,7 +463,8 @@
 				aria-hidden={internalStep !== 4}
 			>
 				{#if internalStep === 4}
-					{@const priceOpt = optionPrices(lot).find(o => o.id === priceId) ?? optionPrices(lot)[0]}
+					{@const priceOpt =
+						optionPrices(lot).find((o) => o.id === priceId) ?? optionPrices(lot)[0]}
 					{@const total = Math.round(priceOpt.perHour * duration)}
 
 					<div class="pay-card">
@@ -448,13 +476,12 @@
 
 						<!-- QR code -->
 						<div class="pay-qr-wrap">
-							<img
-								src={qrImageUrl(total)}
-								alt="UPI QR code for ₹{total} to {UPI_ID}"
-								class="pay-qr-img"
-								width="200"
-								height="200"
-							/>
+						<canvas
+							bind:this={qrCanvas}
+							class="pay-qr-img"
+							width="200"
+							height="200"
+						></canvas>
 							<div class="pay-qr-badge">
 								<span class="pay-qr-badge-dot"></span>
 								Scan with any UPI app
@@ -491,9 +518,12 @@
 						<button
 							type="button"
 							class="sp-btn booking-back-btn"
-							onclick={() => { internalStep = 3; }}
-							disabled={busy}
-						>← Back</button>						<button
+							onclick={() => {
+								internalStep = 3;
+							}}
+							disabled={busy}>← Back</button
+						>
+						<button
 							type="button"
 							class="sp-btn sp-btn-primary booking-confirm-btn"
 							onclick={handlePaid}
@@ -513,541 +543,554 @@
 </div>
 
 <style>
-/* ── Booking Modal ───────────────────────────────────────────── */
-.booking-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 49;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.booking-modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 50;
-  width: min(520px, calc(100vw - 32px));
-  max-height: calc(100svh - 48px);
-  overflow-y: auto;
-  border-radius: 24px;
-  border: 1px solid var(--sp-border);
-  background: var(--sp-surface-strong);
-  box-shadow: 0 32px 120px rgba(0, 0, 0, 0.45);
-  padding: 24px;
-  outline: none;
-}
-
-.booking-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.booking-title {
-  font-family: var(--sp-font-display);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--sp-text);
-  margin: 0;
-}
-
-.booking-subtitle {
-  font-size: 13px;
-  color: var(--sp-muted);
-  margin: 4px 0 0;
-}
-
-.booking-close {
-  padding: 8px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-/* Progress indicator */
-.booking-progress {
-  display: flex;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.booking-progress-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.booking-progress-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid var(--sp-border);
-  background: var(--sp-surface);
-  display: grid;
-  place-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--sp-muted);
-  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
-}
-
-.booking-progress-step.is-active .booking-progress-dot {
-  border-color: var(--sp-brand);
-  background: var(--sp-brand);
-  color: #05210f;
-}
-
-.booking-progress-step.is-done .booking-progress-dot {
-  border-color: var(--sp-brand);
-  background: color-mix(in srgb, var(--sp-brand) 20%, transparent);
-  color: var(--sp-brand);
-}
-
-.booking-progress-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--sp-muted);
-  white-space: nowrap;
-}
-
-.booking-progress-step.is-active .booking-progress-label {
-  color: var(--sp-brand);
-}
-
-.booking-progress-line {
-  flex: 1;
-  height: 2px;
-  background: var(--sp-border);
-  margin: 0 8px;
-  margin-bottom: 16px;
-  transition: background 200ms ease;
-}
-
-.booking-progress-line.is-done {
-  background: var(--sp-brand);
-}
-
-/* Steps */
-.booking-steps-wrap {
-  position: relative;
-  overflow: hidden;
-}
-
-.booking-step {
-  display: none;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.booking-step.is-active {
-  display: flex;
-}
-
-.booking-field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.booking-field-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--sp-muted);
-}
-
-.booking-pills-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.booking-pill {
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.booking-pill.is-selected {
-  border-color: color-mix(in srgb, var(--sp-brand) 55%, var(--sp-border));
-  background: linear-gradient(180deg, var(--sp-brand-2), var(--sp-brand));
-  color: #05210f;
-}
-
-.booking-hint {
-  font-size: 12px;
-  color: var(--sp-muted);
-  margin: 0;
-}
-
-.booking-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--sp-text);
-  cursor: pointer;
-}
-
-.booking-checkbox {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--sp-brand);
-  cursor: pointer;
-}
-
-/* Slot grid */
-.slot-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.slot-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--sp-border);
-  background: color-mix(in srgb, var(--sp-surface-strong) 80%, transparent);
-  color: var(--sp-text);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: border-color 120ms ease, background 120ms ease, transform 100ms ease;
-}
-
-.slot-btn:hover {
-  border-color: color-mix(in srgb, var(--sp-brand) 50%, var(--sp-border));
-  transform: translateY(-1px);
-}
-
-.slot-btn.is-selected {
-  border-color: var(--sp-brand);
-  background: color-mix(in srgb, var(--sp-brand) 18%, var(--sp-surface));
-  color: var(--sp-brand-2);
-}
-
-.slot-btn--any {
-  width: auto;
-  padding: 0 10px;
-  font-size: 11px;
-}
-
-.slot-manual-input {
-  display: inline-block;
-  width: 80px;
-  padding: 6px 10px;
-  font-size: 13px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
-/* Price cards */
-.booking-price-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-@media (max-width: 480px) {
-  .booking-price-cards {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  /* Bottom sheet on mobile */
-  .booking-modal {
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    transform: none;
-    width: 100%;
-    max-height: 92svh;
-    border-radius: 24px 24px 0 0;
-    padding: 20px 16px;
-    padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
-  }
-  .booking-price-cards {
-    grid-template-columns: 1fr;
-  }
-  .slot-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 11px;
-  }
-}
-
-.booking-price-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px 12px;
-  border-radius: 14px;
-  border: 2px solid var(--sp-border);
-  background: var(--sp-surface);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 150ms ease, background 150ms ease;
-}
-
-.booking-price-card:hover {
-  border-color: color-mix(in srgb, var(--sp-brand) 40%, var(--sp-border));
-}
-
-.booking-price-card.is-selected {
-  border-color: var(--sp-brand);
-  background: color-mix(in srgb, var(--sp-brand) 8%, var(--sp-surface));
-}
-
-.booking-price-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--sp-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.booking-price-amount {
-  font-family: var(--sp-font-display);
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--sp-gold);
-  letter-spacing: -0.02em;
-}
-
-.booking-price-unit {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--sp-muted);
-}
-
-.booking-price-desc {
-  font-size: 12px;
-  color: var(--sp-muted);
-  line-height: 1.4;
-}
-
-/* Summary card */
-.booking-summary-card {
-  border-radius: 14px;
-  border: 1px solid var(--sp-border);
-  background: var(--sp-surface);
-  overflow: hidden;
-}
-
-.booking-summary-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--sp-border);
-  gap: 12px;
-}
-
-.booking-summary-row:last-child {
-  border-bottom: none;
-}
-
-.booking-summary-key {
-  font-size: 13px;
-  color: var(--sp-muted);
-  font-weight: 500;
-}
-
-.booking-summary-val {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--sp-text);
-  text-align: right;
-}
-
-.booking-summary-total {
-  background: color-mix(in srgb, var(--sp-brand) 6%, transparent);
-}
-
-.booking-summary-total-val {
-  font-family: var(--sp-font-display);
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--sp-gold);
-  letter-spacing: -0.02em;
-}
-
-.booking-error {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--sp-danger) 35%, var(--sp-border));
-  background: color-mix(in srgb, var(--sp-danger) 8%, transparent);
-  color: color-mix(in srgb, var(--sp-danger) 80%, var(--sp-text));
-  font-size: 13px;
-  font-weight: 500;
-}
-
-/* Navigation buttons */
-.booking-step-nav {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
-.booking-step-nav--split {
-  justify-content: space-between;
-}
-
-.booking-next-btn,
-.booking-confirm-btn {
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  border-radius: 12px;
-}
-
-.booking-back-btn {
-  padding: 12px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 12px;
-}
-
-/* ── UPI Payment Step ────────────────────────────────────────── */
-.pay-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--sp-border);
-  background: var(--sp-surface);
-  padding: 18px;
-}
-
-.pay-amount-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pay-amount-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--sp-muted);
-}
-
-.pay-amount-value {
-  font-family: var(--sp-font-display);
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--sp-gold);
-  letter-spacing: -0.02em;
-}
-
-.pay-qr-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.pay-qr-img {
-  width: 180px;
-  height: 180px;
-  border-radius: 12px;
-  border: 1px solid var(--sp-border);
-  background: #fff;
-  display: block;
-}
-
-.pay-qr-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--sp-brand) 35%, var(--sp-border));
-  background: color-mix(in srgb, var(--sp-brand) 8%, transparent);
-  color: var(--sp-brand);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.pay-qr-badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--sp-brand);
-  animation: payPulse 1.8s ease-in-out infinite;
-}
-
-@keyframes payPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-
-.pay-upi-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--sp-border) 40%, transparent);
-}
-
-.pay-upi-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--sp-muted);
-}
-
-.pay-upi-id {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--sp-text);
-  letter-spacing: 0.02em;
-}
-
-.pay-apps-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pay-app-tag {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--sp-border);
-  background: var(--sp-surface-strong);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--sp-muted);
-}
-
-.pay-demo-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--sp-accent) 30%, var(--sp-border));
-  background: color-mix(in srgb, var(--sp-accent) 6%, transparent);
-  color: color-mix(in srgb, var(--sp-accent) 80%, var(--sp-text));
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.5;
-}
+	/* ── Booking Modal ───────────────────────────────────────────── */
+	.booking-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 49;
+		background: rgba(0, 0, 0, 0.45);
+		backdrop-filter: blur(4px);
+		-webkit-backdrop-filter: blur(4px);
+	}
+
+	.booking-modal {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 50;
+		width: min(520px, calc(100vw - 32px));
+		max-height: calc(100svh - 48px);
+		overflow-y: auto;
+		border-radius: 24px;
+		border: 1px solid var(--sp-border);
+		background: var(--sp-surface-strong);
+		box-shadow: 0 32px 120px rgba(0, 0, 0, 0.45);
+		padding: 24px;
+		outline: none;
+	}
+
+	.booking-header {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 20px;
+	}
+
+	.booking-title {
+		font-family: var(--sp-font-display);
+		font-size: 20px;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		color: var(--sp-text);
+		margin: 0;
+	}
+
+	.booking-subtitle {
+		font-size: 13px;
+		color: var(--sp-muted);
+		margin: 4px 0 0;
+	}
+
+	.booking-close {
+		padding: 8px 12px;
+		font-size: 14px;
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	/* Progress indicator */
+	.booking-progress {
+		display: flex;
+		align-items: center;
+		margin-bottom: 24px;
+	}
+
+	.booking-progress-step {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.booking-progress-dot {
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		border: 2px solid var(--sp-border);
+		background: var(--sp-surface);
+		display: grid;
+		place-items: center;
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--sp-muted);
+		transition:
+			background 200ms ease,
+			border-color 200ms ease,
+			color 200ms ease;
+	}
+
+	.booking-progress-step.is-active .booking-progress-dot {
+		border-color: var(--sp-brand);
+		background: var(--sp-brand);
+		color: #05210f;
+	}
+
+	.booking-progress-step.is-done .booking-progress-dot {
+		border-color: var(--sp-brand);
+		background: color-mix(in srgb, var(--sp-brand) 20%, transparent);
+		color: var(--sp-brand);
+	}
+
+	.booking-progress-label {
+		font-size: 11px;
+		font-weight: 600;
+		color: var(--sp-muted);
+		white-space: nowrap;
+	}
+
+	.booking-progress-step.is-active .booking-progress-label {
+		color: var(--sp-brand);
+	}
+
+	.booking-progress-line {
+		flex: 1;
+		height: 2px;
+		background: var(--sp-border);
+		margin: 0 8px;
+		margin-bottom: 16px;
+		transition: background 200ms ease;
+	}
+
+	.booking-progress-line.is-done {
+		background: var(--sp-brand);
+	}
+
+	/* Steps */
+	.booking-steps-wrap {
+		position: relative;
+		overflow: hidden;
+	}
+
+	.booking-step {
+		display: none;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.booking-step.is-active {
+		display: flex;
+	}
+
+	.booking-field-group {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.booking-field-label {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--sp-muted);
+	}
+
+	.booking-pills-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.booking-pill {
+		padding: 8px 14px;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.booking-pill.is-selected {
+		border-color: color-mix(in srgb, var(--sp-brand) 55%, var(--sp-border));
+		background: linear-gradient(180deg, var(--sp-brand-2), var(--sp-brand));
+		color: #05210f;
+	}
+
+	.booking-hint {
+		font-size: 12px;
+		color: var(--sp-muted);
+		margin: 0;
+	}
+
+	.booking-checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		font-size: 14px;
+		font-weight: 500;
+		color: var(--sp-text);
+		cursor: pointer;
+	}
+
+	.booking-checkbox {
+		width: 16px;
+		height: 16px;
+		accent-color: var(--sp-brand);
+		cursor: pointer;
+	}
+
+	/* Slot grid */
+	.slot-grid {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.slot-btn {
+		width: 36px;
+		height: 36px;
+		border-radius: 8px;
+		border: 1px solid var(--sp-border);
+		background: color-mix(in srgb, var(--sp-surface-strong) 80%, transparent);
+		color: var(--sp-text);
+		font-size: 12px;
+		font-weight: 700;
+		cursor: pointer;
+		display: grid;
+		place-items: center;
+		transition:
+			border-color 120ms ease,
+			background 120ms ease,
+			transform 100ms ease;
+	}
+
+	.slot-btn:hover {
+		border-color: color-mix(in srgb, var(--sp-brand) 50%, var(--sp-border));
+		transform: translateY(-1px);
+	}
+
+	.slot-btn.is-selected {
+		border-color: var(--sp-brand);
+		background: color-mix(in srgb, var(--sp-brand) 18%, var(--sp-surface));
+		color: var(--sp-brand-2);
+	}
+
+	.slot-btn--any {
+		width: auto;
+		padding: 0 10px;
+		font-size: 11px;
+	}
+
+	.slot-manual-input {
+		display: inline-block;
+		width: 80px;
+		padding: 6px 10px;
+		font-size: 13px;
+		margin-left: 6px;
+		vertical-align: middle;
+	}
+
+	/* Price cards */
+	.booking-price-cards {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 10px;
+	}
+
+	@media (max-width: 480px) {
+		.booking-price-cards {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (max-width: 640px) {
+		/* Bottom sheet on mobile */
+		.booking-modal {
+			top: auto;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			transform: none;
+			width: 100%;
+			max-height: 92svh;
+			border-radius: 24px 24px 0 0;
+			padding: 20px 16px;
+			padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+		}
+		.booking-price-cards {
+			grid-template-columns: 1fr;
+		}
+		.slot-btn {
+			width: 32px;
+			height: 32px;
+			font-size: 11px;
+		}
+	}
+
+	.booking-price-card {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 14px 12px;
+		border-radius: 14px;
+		border: 2px solid var(--sp-border);
+		background: var(--sp-surface);
+		cursor: pointer;
+		text-align: left;
+		transition:
+			border-color 150ms ease,
+			background 150ms ease;
+	}
+
+	.booking-price-card:hover {
+		border-color: color-mix(in srgb, var(--sp-brand) 40%, var(--sp-border));
+	}
+
+	.booking-price-card.is-selected {
+		border-color: var(--sp-brand);
+		background: color-mix(in srgb, var(--sp-brand) 8%, var(--sp-surface));
+	}
+
+	.booking-price-label {
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--sp-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.booking-price-amount {
+		font-family: var(--sp-font-display);
+		font-size: 20px;
+		font-weight: 800;
+		color: var(--sp-gold);
+		letter-spacing: -0.02em;
+	}
+
+	.booking-price-unit {
+		font-size: 13px;
+		font-weight: 500;
+		color: var(--sp-muted);
+	}
+
+	.booking-price-desc {
+		font-size: 12px;
+		color: var(--sp-muted);
+		line-height: 1.4;
+	}
+
+	/* Summary card */
+	.booking-summary-card {
+		border-radius: 14px;
+		border: 1px solid var(--sp-border);
+		background: var(--sp-surface);
+		overflow: hidden;
+	}
+
+	.booking-summary-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 10px 14px;
+		border-bottom: 1px solid var(--sp-border);
+		gap: 12px;
+	}
+
+	.booking-summary-row:last-child {
+		border-bottom: none;
+	}
+
+	.booking-summary-key {
+		font-size: 13px;
+		color: var(--sp-muted);
+		font-weight: 500;
+	}
+
+	.booking-summary-val {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--sp-text);
+		text-align: right;
+	}
+
+	.booking-summary-total {
+		background: color-mix(in srgb, var(--sp-brand) 6%, transparent);
+	}
+
+	.booking-summary-total-val {
+		font-family: var(--sp-font-display);
+		font-size: 20px;
+		font-weight: 800;
+		color: var(--sp-gold);
+		letter-spacing: -0.02em;
+	}
+
+	.booking-error {
+		padding: 10px 14px;
+		border-radius: 10px;
+		border: 1px solid color-mix(in srgb, var(--sp-danger) 35%, var(--sp-border));
+		background: color-mix(in srgb, var(--sp-danger) 8%, transparent);
+		color: color-mix(in srgb, var(--sp-danger) 80%, var(--sp-text));
+		font-size: 13px;
+		font-weight: 500;
+	}
+
+	/* Navigation buttons */
+	.booking-step-nav {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 8px;
+	}
+
+	.booking-step-nav--split {
+		justify-content: space-between;
+	}
+
+	.booking-next-btn,
+	.booking-confirm-btn {
+		padding: 12px 24px;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+		border-radius: 12px;
+	}
+
+	.booking-back-btn {
+		padding: 12px 20px;
+		font-size: 14px;
+		font-weight: 600;
+		cursor: pointer;
+		border-radius: 12px;
+	}
+
+	/* ── UPI Payment Step ────────────────────────────────────────── */
+	.pay-card {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		border-radius: 16px;
+		border: 1px solid var(--sp-border);
+		background: var(--sp-surface);
+		padding: 18px;
+	}
+
+	.pay-amount-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.pay-amount-label {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--sp-muted);
+	}
+
+	.pay-amount-value {
+		font-family: var(--sp-font-display);
+		font-size: 26px;
+		font-weight: 800;
+		color: var(--sp-gold);
+		letter-spacing: -0.02em;
+	}
+
+	.pay-qr-wrap {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.pay-qr-img {
+		width: 180px;
+		height: 180px;
+		border-radius: 12px;
+		border: 1px solid var(--sp-border);
+		background: #fff;
+		display: block;
+	}
+
+	.pay-qr-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 12px;
+		border-radius: 999px;
+		border: 1px solid color-mix(in srgb, var(--sp-brand) 35%, var(--sp-border));
+		background: color-mix(in srgb, var(--sp-brand) 8%, transparent);
+		color: var(--sp-brand);
+		font-size: 12px;
+		font-weight: 700;
+	}
+
+	.pay-qr-badge-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--sp-brand);
+		animation: payPulse 1.8s ease-in-out infinite;
+	}
+
+	@keyframes payPulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.35;
+		}
+	}
+
+	.pay-upi-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 10px 12px;
+		border-radius: 10px;
+		background: color-mix(in srgb, var(--sp-border) 40%, transparent);
+	}
+
+	.pay-upi-label {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--sp-muted);
+	}
+
+	.pay-upi-id {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		font-size: 13px;
+		font-weight: 700;
+		color: var(--sp-text);
+		letter-spacing: 0.02em;
+	}
+
+	.pay-apps-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.pay-app-tag {
+		padding: 4px 10px;
+		border-radius: 999px;
+		border: 1px solid var(--sp-border);
+		background: var(--sp-surface-strong);
+		font-size: 11px;
+		font-weight: 700;
+		color: var(--sp-muted);
+	}
+
+	.pay-demo-note {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		padding: 10px 12px;
+		border-radius: 10px;
+		border: 1px solid color-mix(in srgb, var(--sp-accent) 30%, var(--sp-border));
+		background: color-mix(in srgb, var(--sp-accent) 6%, transparent);
+		color: color-mix(in srgb, var(--sp-accent) 80%, var(--sp-text));
+		font-size: 12px;
+		font-weight: 500;
+		line-height: 1.5;
+	}
 </style>
