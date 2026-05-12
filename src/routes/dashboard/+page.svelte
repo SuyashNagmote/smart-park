@@ -34,6 +34,7 @@ let bookingDuration = $state(2);
 let bookingVehicle = $state<'car' | 'ev'>('car');
 let bookingNeedsCharging = $state(false);
 let bookingBusy = $state(false);
+let bookingStartTime = $state<number>(Date.now());
 let toast = $state<{ title: string; message?: string } | null>(null);
 let celebration = $state<{ receiptCode: string; xp: number } | null>(null);
 let burstKey = $state(0);
@@ -325,6 +326,7 @@ async function confirmBooking() {
       slotNumber: bookingSlot,
       durationHours: bookingDuration,
       priceId: selectedPriceId,
+      startTime: bookingStartTime,
     });
     if (result.ok) {
       closeBookingModal();
@@ -358,10 +360,11 @@ function closeBookingModal() {
   if (bookingModalEl) {
     gsap.to(bookingModalEl, {
       opacity: 0, scale: 0.96, y: 8, duration: 0.16, ease: 'power2.in',
-      onComplete: () => { bookingOpen = false; },
+      onComplete: () => { bookingOpen = false; bookingStartTime = Date.now(); },
     });
   } else {
     bookingOpen = false;
+    bookingStartTime = Date.now();
   }
 }
 
@@ -639,6 +642,7 @@ onMount(() => {
           {liveEvents}
           {liveActivityOpen}
           {parkingRushOpen}
+          {userPos}
           onFindLots={() => (tab = 'map')}
           onViewBookings={() => (tab = 'bookings')}
           onPlayRush={() => (parkingRushOpen = true)}
@@ -833,6 +837,7 @@ onMount(() => {
     onSlotChange={(s) => (bookingSlot = s)}
     onPriceChange={(p) => (selectedPriceId = p)}
     onConfirm={confirmBooking}
+    onStartTimeChange={(ts) => (bookingStartTime = ts)}
     bindStep1El={(el) => (bookingStepEls[0] = el)}
     bindStep2El={(el) => (bookingStepEls[1] = el)}
     bindStep3El={(el) => (bookingStepEls[2] = el)}

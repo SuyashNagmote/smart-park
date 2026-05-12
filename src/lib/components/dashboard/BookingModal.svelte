@@ -18,6 +18,7 @@
 		onSlotChange,
 		onPriceChange,
 		onConfirm,
+		onStartTimeChange,
 		bindStep1El,
 		bindStep2El,
 		bindStep3El,
@@ -41,6 +42,7 @@
 		onSlotChange: (s: number | null) => void;
 		onPriceChange: (p: 'standard' | 'flex' | 'green') => void;
 		onConfirm: () => void;
+		onStartTimeChange?: (ts: number) => void;
 		bindStep1El: (el: HTMLDivElement) => void;
 		bindStep2El: (el: HTMLDivElement) => void;
 		bindStep3El: (el: HTMLDivElement) => void;
@@ -56,6 +58,65 @@
 	$effect(() => { if (step2El) bindStep2El(step2El); });
 	$effect(() => { if (step3El) bindStep3El(step3El); });
 	$effect(() => { if (modalEl) bindModalEl(modalEl); });
+
+	// ── Start time state ─────────────────────────────────────────
+	let startMode = $state<'now' | 'schedule'>('now');
+	let scheduledDatetime = $state<string>('');
+
+	function nowDatetimeLocal(): string {
+		const d = new Date();
+		d.setSeconds(0, 0);
+		return d.toISOString().slice(0, 16);
+	}
+
+	function maxDatetimeLocal(): string {
+		const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+		return d.toISOString().slice(0, 16);
+	}
+
+	function setStartMode(mode: 'now' | 'schedule') {
+		startMode = mode;
+		if (mode === 'now') {
+			onStartTimeChange?.(Date.now());
+		} else {
+			if (!scheduledDatetime) scheduledDatetime = nowDatetimeLocal();
+			const ts = new Date(scheduledDatetime).getTime();
+			if (!isNaN(ts)) onStartTimeChange?.(ts);
+		}
+	}
+
+	function handleDatetimeChange(val: string) {
+		scheduledDatetime = val;
+		const ts = new Date(val).getTime();
+		if (!isNaN(ts)) onStartTimeChange?.(ts);
+	}
+
+	let startTimeDisplay = $derived(
+		startMode === 'now'
+			? 'Now'
+			: scheduledDatetime
+				? new Date(scheduledDatetime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+				: 'Not set'
+	);
+
+	// ── Slot picker state ────────────────────────────────────────
+	let manualSlot = $state<string>('');
+
+	function slotCount(): number {
+		return Math.min(lot?.capacity ?? 20, 20);
+	}
+
+	function handleSlotSelect(s: number | null) {
+		onSlotChange(s);
+		if (s !== null) manualSlot = String(s);
+	}
+
+	function handleManualSlot(val: string) {
+		manualSlot = val;
+		const n = parseInt(val, 10);
+		if (!isNaN(n) && n >= 1) onSlotChange(n);
+		else onSlotChange(null);
+	}
 
 	function optionPrices(l: any) {
 		const base = l.hourlyRate ?? 50;
@@ -127,6 +188,36 @@
 				bind:this={step1El}
 				aria-hidden={step !== 1}
 			>
+				<!-- Start time picker -->
+				<div class="booking-field-group">
+					<div class="booking-field-label">Start time</div>
+					<div class="booking-pills-row">
+						<button
+							type="button"
+							class="sp-pill booking-pill"
+							class:is-selected={startMode === 'now'}
+							onclick={() => setStartMode('now')}
+						>Now</button>
+						<button
+							type="button"
+							class="sp-pill booking-pill"
+							class:is-selected={startMode === 'schedule'}
+							onclick={() => setStartMode('schedule')}
+						>Schedule</button>
+					</div>
+					{#if startMode === 'schedule'}
+						<input
+							type="datetime-local"
+							class="sp-input mt-1"
+							value={scheduledDatetime}
+							min={nowDatetimeLocal()}
+							max={maxDatetimeLocal()}
+							oninput={(e) => handleDatetimeChange((e.target as HTMLInputElement).value)}
+						/>
+					{/if}
+					<p class="booking-hint">Bookings can be scheduled up to 7 days in advance</p>
+				</div>
+
 				<div class="booking-field-group">
 					<div class="booking-field-label">Duration</div>
 					<div class="booking-pills-row">
@@ -176,6 +267,44 @@
 						</label>
 					</div>
 				{/if}
+
+				<!-- Slot picker -->
+				<div class="booking-field-group">
+					<div class="booking-field-label">Slot preference</div>
+					<div class="slot-grid">
+						<!-- Any slot option -->
+						<button
+							type="button"
+							class="slot-btn slot-btn--any"
+							class:is-selected={slot === null}
+							onclick={() => handleSlotSelect(null)}
+							title="Any available slot"
+						>Any</button>
+						{#each Array.from({ length: slotCount() }, (_, i) => i + 1) as n}
+							<button
+								type="button"
+								class="slot-btn"
+								class:is-selected={slot === n}
+								onclick={() => handleSlotSelect(n)}
+								title="Slot {n}"
+							>{n}</button>
+						{/each}
+					</div>
+					{#if (lot.capacity ?? 0) > 20}
+						<div class="booking-hint mt-1">
+							or enter manually:
+							<input
+								type="number"
+								class="sp-input slot-manual-input"
+								min="1"
+								max={lot.capacity}
+								placeholder="Slot #"
+								value={manualSlot}
+								oninput={(e) => handleManualSlot((e.target as HTMLInputElement).value)}
+							/>
+						</div>
+					{/if}
+				</div>
 
 				<div class="booking-step-nav">
 					<button
@@ -237,6 +366,10 @@
 							<span class="booking-summary-val">{lot.name}</span>
 						</div>
 						<div class="booking-summary-row">
+							<span class="booking-summary-key">Start time</span>
+							<span class="booking-summary-val">{startTimeDisplay}</span>
+						</div>
+						<div class="booking-summary-row">
 							<span class="booking-summary-key">Duration</span>
 							<span class="booking-summary-val">{duration}h</span>
 						</div>
@@ -244,6 +377,12 @@
 							<span class="booking-summary-key">Vehicle</span>
 							<span class="booking-summary-val">{vehicle === 'ev' ? 'EV' : 'Car'}{needsCharging ? ' + Charging' : ''}</span>
 						</div>
+						{#if slot !== null}
+							<div class="booking-summary-row">
+								<span class="booking-summary-key">Slot</span>
+								<span class="booking-summary-val">#{slot}</span>
+							</div>
+						{/if}
 						<div class="booking-summary-row">
 							<span class="booking-summary-key">Price tier</span>
 							<span class="booking-summary-val">{priceOpt.label} · ₹{priceOpt.perHour}/hr</span>
@@ -469,6 +608,54 @@
   height: 16px;
   accent-color: var(--sp-brand);
   cursor: pointer;
+}
+
+/* Slot grid */
+.slot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.slot-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--sp-border);
+  background: color-mix(in srgb, var(--sp-surface-strong) 80%, transparent);
+  color: var(--sp-text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: border-color 120ms ease, background 120ms ease, transform 100ms ease;
+}
+
+.slot-btn:hover {
+  border-color: color-mix(in srgb, var(--sp-brand) 50%, var(--sp-border));
+  transform: translateY(-1px);
+}
+
+.slot-btn.is-selected {
+  border-color: var(--sp-brand);
+  background: color-mix(in srgb, var(--sp-brand) 18%, var(--sp-surface));
+  color: var(--sp-brand-2);
+}
+
+.slot-btn--any {
+  width: auto;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.slot-manual-input {
+  display: inline-block;
+  width: 80px;
+  padding: 6px 10px;
+  font-size: 13px;
+  margin-left: 6px;
+  vertical-align: middle;
 }
 
 /* Price cards */

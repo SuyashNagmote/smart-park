@@ -92,6 +92,7 @@ export async function book(payload: {
 	slotNumber: number | null;
 	durationHours: number;
 	priceId: string;
+	startTime?: number;
 }) {
 	const lot = payload.lot;
 
@@ -114,6 +115,7 @@ export async function book(payload: {
 				slotNumber: payload.slotNumber,
 				durationHours: payload.durationHours,
 				priceId: payload.priceId,
+				startTime: payload.startTime,
 			}),
 		});
 		const data = await res.json();
