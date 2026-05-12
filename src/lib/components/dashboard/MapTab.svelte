@@ -804,8 +804,9 @@
 
 @media (max-width: 1023px) {
   .map-detail-bar {
-    bottom: calc(76px + env(safe-area-inset-bottom)); /* Sit above mobile nav */
+    bottom: 16px; /* Parent container already accounts for mobile nav */
     border-radius: 20px;
+    width: calc(100% - 24px);
   }
 }
 
