@@ -67,10 +67,13 @@
 		onBook: () => void;
 		onRetryLots: () => void;
 	} = $props();
+
+	// Mobile-only state
+	let showMobileList = $state(false);
 </script>
 
 <div class="map-tab-grid">
-	<!-- ── Left: Lot list panel ─────────────────────────────── -->
+	<!-- ── Left: Lot list panel (desktop only) ──────────────── -->
 	<aside class="map-lot-panel">
 		<!-- Search input -->
 		<div class="sp-inputRow map-search-row">
@@ -175,7 +178,7 @@
 
 	<!-- ── Right: Map section ───────────────────────────────── -->
 	<section class="map-right-section">
-		<!-- Map controls bar -->
+		<!-- Map controls bar (desktop) -->
 		<div class="map-controls-bar">
 			<button
 				type="button"
@@ -233,6 +236,100 @@
 				</button>
 			{/if}
 		</div>
+
+		<!-- Mobile: floating search overlay -->
+		<div class="map-mobile-search">
+			<div class="sp-inputRow map-search-row">
+				<span class="i-fa6-solid-magnifying-glass sp-inputIcon" aria-hidden="true"></span>
+				<input
+					type="search"
+					placeholder="Search lots…"
+					value={search}
+					oninput={(e) => onSearch((e.target as HTMLInputElement).value)}
+					aria-label="Search parking lots"
+				/>
+				<span
+					class="map-status-dot"
+					class:is-connected={status === 'connected'}
+					class:is-offline={status === 'offline'}
+					title={status}
+					aria-label="Connection: {status}"
+				></span>
+			</div>
+			<!-- Filter pills -->
+			<div class="map-mobile-filters">
+				<button
+					type="button"
+					class="sp-pill map-filter-pill"
+					class:is-active={filterMode === 'all'}
+					onclick={() => onFilterChange('all')}
+				>All</button>
+				<button
+					type="button"
+					class="sp-pill map-filter-pill"
+					class:is-active={filterMode === 'available'}
+					onclick={() => onFilterChange('available')}
+				>Available</button>
+				<button
+					type="button"
+					class="sp-pill map-filter-pill"
+					class:is-active={filterMode === 'ev'}
+					onclick={() => onFilterChange('ev')}
+				>EV</button>
+				{#if selectedLotId}
+					<button
+						type="button"
+						class="sp-pill map-filter-pill map-filter-clear"
+						onclick={onClearTarget}
+					>Clear</button>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Mobile: floating map controls (icon only) -->
+		<div class="map-mobile-controls">
+			<button
+				type="button"
+				class="map-mobile-ctrl-btn"
+				class:is-active={showHeat}
+				onclick={onToggleHeat}
+				title="Heat map"
+				aria-pressed={showHeat}
+			>
+				<span class="i-fa6-solid-fire-flame-curved" aria-hidden="true"></span>
+			</button>
+			<button
+				type="button"
+				class="map-mobile-ctrl-btn"
+				class:is-active={pinMode === 'home'}
+				onclick={() => onSetPinMode(pinMode === 'home' ? 'none' : 'home')}
+				title="Home pin"
+				aria-pressed={pinMode === 'home'}
+			>
+				<span class="i-fa6-solid-house" aria-hidden="true"></span>
+			</button>
+			<button
+				type="button"
+				class="map-mobile-ctrl-btn"
+				class:is-active={pinMode === 'work'}
+				onclick={() => onSetPinMode(pinMode === 'work' ? 'none' : 'work')}
+				title="Work pin"
+				aria-pressed={pinMode === 'work'}
+			>
+				<span class="i-fa6-solid-briefcase" aria-hidden="true"></span>
+			</button>
+		</div>
+
+		<!-- Mobile: List FAB -->
+		<button
+			type="button"
+			class="map-mobile-list-fab"
+			onclick={() => (showMobileList = !showMobileList)}
+			aria-label="Show lot list ({filteredLots.length} lots)"
+		>
+			<span class="i-fa6-solid-list" aria-hidden="true"></span>
+			<span class="map-mobile-list-count">{filteredLots.length}</span>
+		</button>
 
 		<!-- Map container -->
 		<div class="map-container-wrap sp-map-shell">
@@ -301,7 +398,7 @@
 			</div>
 		{/if}
 
-		<!-- Realtime updates feed -->
+		<!-- Realtime updates feed (desktop only) -->
 		{#if liveEvents.length > 0}
 			<div class="map-live-feed" aria-label="Live updates" aria-live="polite">
 				<div class="map-live-feed-title">
@@ -315,6 +412,71 @@
 							<span class="map-live-event-time">{new Date(ev.timestamp).toLocaleTimeString()}</span>
 						</div>
 					{/each}
+				</div>
+			</div>
+		{/if}
+
+		<!-- Mobile: lot list bottom sheet -->
+		{#if showMobileList}
+			<div
+				class="map-mobile-sheet-backdrop"
+				onclick={() => (showMobileList = false)}
+				aria-hidden="true"
+			></div>
+			<div class="map-lot-panel is-open" role="dialog" aria-modal="true" aria-label="Parking lots">
+				<div class="map-mobile-sheet-handle"></div>
+				<div class="map-mobile-sheet-header">
+					<span class="map-mobile-sheet-title">Parking lots ({filteredLots.length})</span>
+					<button
+						type="button"
+						class="sp-btn"
+						onclick={() => (showMobileList = false)}
+						style="padding: 6px 10px; font-size: 13px;"
+						aria-label="Close lot list"
+					>✕</button>
+				</div>
+				<!-- Error banner in sheet -->
+				{#if errorMessage}
+					<ErrorBanner message={errorMessage} onRetry={onRetryLots} />
+				{/if}
+				<div class="map-lot-list" role="list" aria-label="Parking lots">
+					{#if lotsLoading && parkingLots.length === 0}
+						{#each [1, 2, 3, 4, 5] as _}
+							<SkeletonCard lines={3} />
+						{/each}
+					{:else if filteredLots.length === 0}
+						<EmptyState
+							icon="i-fa6-solid-car"
+							heading="No lots found"
+							description="Try adjusting your search or filter."
+						/>
+					{:else}
+						{#each filteredLots as lot (lot.id)}
+							<button
+								type="button"
+								class="map-lot-card"
+								class:is-selected={selectedLotId === lot.id}
+								onclick={() => { onSelectLot(lot.id); showMobileList = false; }}
+								aria-pressed={selectedLotId === lot.id}
+							>
+								<div class="map-lot-card-header">
+									<span class="map-lot-name">{lot.name}</span>
+									<span
+										class="map-lot-avail"
+										class:is-low={(lot.available ?? 0) < 5}
+										class:is-empty={(lot.available ?? 0) === 0}
+									>
+										{lot.available ?? 0}/{lot.capacity}
+									</span>
+								</div>
+								<div class="map-lot-meta">
+									<span>{lot.area}</span>
+									<span>₹{lot.hourlyRate ?? 50}/hr</span>
+									{#if lot.ev}<span class="map-lot-ev-badge">⚡ EV</span>{/if}
+								</div>
+							</button>
+						{/each}
+					{/if}
 				</div>
 			</div>
 		{/if}
@@ -337,6 +499,14 @@
   }
 }
 
+@media (max-width: 1023px) {
+  .map-tab-grid {
+    display: block;
+    position: relative;
+    height: calc(100svh - 56px - calc(64px + env(safe-area-inset-bottom)));
+  }
+}
+
 /* ── Left panel ──────────────────────────────────────────────── */
 .map-lot-panel {
   display: flex;
@@ -349,11 +519,26 @@
   max-height: calc(100svh - 120px);
 }
 
+/* Hide the side panel on mobile; show only as bottom sheet when is-open */
 @media (max-width: 1023px) {
   .map-lot-panel {
-    max-height: 280px;
-    border-right: none;
-    border-bottom: 1px solid var(--sp-border);
+    display: none;
+  }
+  .map-lot-panel.is-open {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    top: auto;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    height: 60vh;
+    z-index: 45;
+    border-radius: 20px 20px 0 0;
+    border: 1px solid var(--sp-border);
+    border-bottom: none;
+    background: var(--sp-surface-strong);
+    max-height: none;
+    overflow-y: auto;
+    padding: 16px;
   }
 }
 
@@ -498,7 +683,14 @@
   min-height: 0;
 }
 
-/* Map controls bar */
+@media (max-width: 1023px) {
+  .map-right-section {
+    height: 100%;
+    position: relative;
+  }
+}
+
+/* Map controls bar (desktop only) */
 .map-controls-bar {
   display: flex;
   align-items: center;
@@ -509,6 +701,12 @@
   flex-wrap: wrap;
   flex-shrink: 0;
   z-index: 10;
+}
+
+@media (max-width: 1023px) {
+  .map-controls-bar {
+    display: none;
+  }
 }
 
 .map-ctrl-btn {
@@ -533,6 +731,13 @@
   position: relative;
   flex: 1;
   min-height: 0;
+}
+
+@media (max-width: 1023px) {
+  .map-container-wrap {
+    height: 100%;
+    flex: none;
+  }
 }
 
 .map-init-error {
@@ -584,6 +789,23 @@
   background: var(--sp-surface-strong);
   flex-shrink: 0;
   z-index: 10;
+}
+
+@media (max-width: 1023px) {
+  .map-detail-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid var(--sp-border);
+    border-left: 1px solid var(--sp-border);
+    border-right: 1px solid var(--sp-border);
+    z-index: 22;
+  }
+  .map-detail-toggle {
+    top: -18px;
+  }
 }
 
 .map-detail-toggle {
@@ -662,12 +884,18 @@
   flex-shrink: 0;
 }
 
-/* Live feed */
+/* Live feed (desktop only) */
 .map-live-feed {
   border-top: 1px solid var(--sp-border);
   background: var(--sp-bg0);
   padding: 8px 14px;
   flex-shrink: 0;
+}
+
+@media (max-width: 1023px) {
+  .map-live-feed {
+    display: none;
+  }
 }
 
 .map-live-feed-title {
@@ -706,5 +934,138 @@
 .map-live-event-time {
   color: var(--sp-muted);
   flex-shrink: 0;
+}
+
+/* ── Mobile floating search overlay ─────────────────────────── */
+.map-mobile-search {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .map-mobile-search {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 20;
+  }
+  .map-mobile-filters {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .map-mobile-filters::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Mobile floating controls ────────────────────────────────── */
+.map-mobile-controls {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .map-mobile-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: absolute;
+    right: 12px;
+    top: 130px;
+    z-index: 20;
+  }
+  .map-mobile-ctrl-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--sp-border);
+    background: var(--sp-surface-strong);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    color: var(--sp-muted);
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  }
+  .map-mobile-ctrl-btn.is-active {
+    background: var(--sp-brand);
+    color: #05210f;
+    border-color: var(--sp-brand);
+  }
+}
+
+/* ── Mobile List FAB ─────────────────────────────────────────── */
+.map-mobile-list-fab {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .map-mobile-list-fab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    position: absolute;
+    bottom: 16px;
+    left: 12px;
+    z-index: 20;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--sp-border);
+    background: var(--sp-surface-strong);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sp-text);
+    cursor: pointer;
+  }
+  .map-mobile-list-count {
+    background: var(--sp-brand);
+    color: #05210f;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+}
+
+/* ── Mobile bottom sheet backdrop ───────────────────────────── */
+.map-mobile-sheet-backdrop {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .map-mobile-sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .map-mobile-sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--sp-border);
+    margin: 0 auto 12px;
+    flex-shrink: 0;
+  }
+  .map-mobile-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+  }
+  .map-mobile-sheet-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--sp-text);
+  }
 }
 </style>

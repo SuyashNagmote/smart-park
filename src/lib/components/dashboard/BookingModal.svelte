@@ -787,6 +787,30 @@
   }
 }
 
+@media (max-width: 640px) {
+  /* Bottom sheet on mobile */
+  .booking-modal {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-height: 92svh;
+    border-radius: 24px 24px 0 0;
+    padding: 20px 16px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 20px);
+  }
+  .booking-price-cards {
+    grid-template-columns: 1fr;
+  }
+  .slot-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+}
+
 .booking-price-card {
   display: flex;
   flex-direction: column;

@@ -952,8 +952,17 @@ html[data-theme='dark'] .sp-cockpit__wrap {
 		align-items: stretch;
 	}
 
+	.sp-section {
+		padding: 14px;
+		border-radius: 20px;
+	}
+
+	.sp-kpi {
+		padding: 12px;
+	}
+
 	.sp-cockpit {
-		bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+		bottom: calc(env(safe-area-inset-bottom, 0px) + 64px + 8px);
 	}
 
 	.sp-cockpit__wrap {

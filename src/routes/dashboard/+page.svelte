@@ -643,7 +643,7 @@ onMount(() => {
   <div class="dash-main">
     <DashTopBar email={page.data.user?.email} level={stats?.level ?? 1} {currentTheme} onToggleTheme={toggleTheme} />
 
-    <div class="dash-content">
+    <div class="dash-content" class:is-map-tab={tab === 'map'}>
       {#if getActiveSession() !== null}
         {@const s = getActiveSession()!}
         <SessionCockpit
@@ -888,7 +888,16 @@ onMount(() => {
 @media (max-width: 1023px) {
   .dash-shell { grid-template-columns: 1fr; }
   .dash-main { grid-column: 1; }
-  .dash-content { padding: 16px; padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px); }
+  .dash-content {
+    padding: 12px;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + 12px);
+  }
+  /* Map tab gets zero padding so the map fills edge-to-edge */
+  .dash-content.is-map-tab {
+    padding: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
 }
 
 /* Toast */
