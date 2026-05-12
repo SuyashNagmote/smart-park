@@ -118,6 +118,45 @@
 		else onSlotChange(null);
 	}
 
+	// ── Payment step state ───────────────────────────────────────
+	// Internal 4-step flow: 1=Duration, 2=Price, 3=Confirm, 4=Pay
+	let internalStep = $state<1 | 2 | 3 | 4>(1);
+	let paymentDone = $state(false);
+
+	// Keep internalStep in sync with parent step prop (parent controls 1-3)
+	$effect(() => {
+		if (step !== internalStep && step <= 3) {
+			internalStep = step;
+			paymentDone = false;
+		}
+	});
+
+	function goToPayment() {
+		internalStep = 4;
+		paymentDone = false;
+	}
+
+	function handlePaid() {
+		paymentDone = true;
+		onConfirm();
+	}
+
+	// ── UPI QR ───────────────────────────────────────────────────
+	const UPI_ID = '9325108742@ybl';
+	const UPI_NAME = 'SmartPark';
+
+	function upiUrl(amount: number): string {
+		const note = encodeURIComponent('Parking Booking');
+		const name = encodeURIComponent(UPI_NAME);
+		return `upi://pay?pa=${UPI_ID}&pn=${name}&am=${amount}&cu=INR&tn=${note}`;
+	}
+
+	function qrImageUrl(amount: number): string {
+		const data = encodeURIComponent(upiUrl(amount));
+		// Using Google Charts QR API (no npm package needed)
+		return `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${data}&choe=UTF-8`;
+	}
+
 	function optionPrices(l: any) {
 		const base = l.hourlyRate ?? 50;
 		const surge = Math.max(0, Math.round(base * 0.18));
@@ -164,16 +203,16 @@
 	</div>
 
 	<!-- Progress indicator -->
-	<div class="booking-progress" aria-label="Step {step} of 3">
-		{#each ([1, 2, 3] as const) as s}
-			<div class="booking-progress-step" class:is-active={step === s} class:is-done={step > s}>
+	<div class="booking-progress" aria-label="Step {internalStep} of 4">
+		{#each ([1, 2, 3, 4] as const) as s}
+			<div class="booking-progress-step" class:is-active={internalStep === s} class:is-done={internalStep > s}>
 				<div class="booking-progress-dot">
-					{#if step > s}✓{:else}{s}{/if}
+					{#if internalStep > s}✓{:else}{s}{/if}
 				</div>
-				<span class="booking-progress-label">{['Duration', 'Price', 'Confirm'][s - 1]}</span>
+				<span class="booking-progress-label">{['Duration', 'Price', 'Confirm', 'Pay'][s - 1]}</span>
 			</div>
-			{#if s < 3}
-				<div class="booking-progress-line" class:is-done={step > s}></div>
+			{#if s < 4}
+				<div class="booking-progress-line" class:is-done={internalStep > s}></div>
 			{/if}
 		{/each}
 	</div>
@@ -184,9 +223,9 @@
 			<!-- Step 1: Duration & Vehicle -->
 			<div
 				class="booking-step"
-				class:is-active={step === 1}
+				class:is-active={internalStep === 1}
 				bind:this={step1El}
-				aria-hidden={step !== 1}
+				aria-hidden={internalStep !== 1}
 			>
 				<!-- Start time picker -->
 				<div class="booking-field-group">
@@ -318,9 +357,9 @@
 			<!-- Step 2: Price Tier -->
 			<div
 				class="booking-step"
-				class:is-active={step === 2}
+				class:is-active={internalStep === 2}
 				bind:this={step2El}
-				aria-hidden={step !== 2}
+				aria-hidden={internalStep !== 2}
 			>
 				<div class="booking-field-group">
 					<div class="booking-field-label">Choose your price tier</div>
@@ -353,11 +392,11 @@
 			<!-- Step 3: Confirm -->
 			<div
 				class="booking-step"
-				class:is-active={step === 3}
+				class:is-active={internalStep === 3}
 				bind:this={step3El}
-				aria-hidden={step !== 3}
+				aria-hidden={internalStep !== 3}
 			>
-				{#if step === 3}
+				{#if internalStep === 3}
 					{@const priceOpt = optionPrices(lot).find(o => o.id === priceId) ?? optionPrices(lot)[0]}
 					{@const total = Math.round(priceOpt.perHour * duration)}
 					<div class="booking-summary-card">
@@ -402,10 +441,87 @@
 						<button
 							type="button"
 							class="sp-btn sp-btn-primary booking-confirm-btn"
-							onclick={onConfirm}
+							onclick={goToPayment}
 							disabled={busy}
 						>
-							{busy ? 'Booking…' : 'Confirm booking'}
+							Proceed to Pay →
+						</button>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Step 4: UPI Payment -->
+			<div
+				class="booking-step"
+				class:is-active={internalStep === 4}
+				aria-hidden={internalStep !== 4}
+			>
+				{#if internalStep === 4}
+					{@const priceOpt = optionPrices(lot).find(o => o.id === priceId) ?? optionPrices(lot)[0]}
+					{@const total = Math.round(priceOpt.perHour * duration)}
+
+					<div class="pay-card">
+						<!-- Amount -->
+						<div class="pay-amount-row">
+							<span class="pay-amount-label">Amount to pay</span>
+							<span class="pay-amount-value">₹{total}</span>
+						</div>
+
+						<!-- QR code -->
+						<div class="pay-qr-wrap">
+							<img
+								src={qrImageUrl(total)}
+								alt="UPI QR code for ₹{total} to {UPI_ID}"
+								class="pay-qr-img"
+								width="200"
+								height="200"
+							/>
+							<div class="pay-qr-badge">
+								<span class="pay-qr-badge-dot"></span>
+								Scan with any UPI app
+							</div>
+						</div>
+
+						<!-- UPI ID -->
+						<div class="pay-upi-row">
+							<span class="pay-upi-label">UPI ID</span>
+							<span class="pay-upi-id">{UPI_ID}</span>
+						</div>
+
+						<!-- Supported apps -->
+						<div class="pay-apps-row">
+							<span class="pay-app-tag">GPay</span>
+							<span class="pay-app-tag">PhonePe</span>
+							<span class="pay-app-tag">Paytm</span>
+							<span class="pay-app-tag">BHIM</span>
+							<span class="pay-app-tag">Any UPI</span>
+						</div>
+
+						<!-- Demo note -->
+						<div class="pay-demo-note">
+							<span class="i-fa6-solid-circle-info" aria-hidden="true"></span>
+							Demo mode — tap "I've paid" to confirm your booking after scanning.
+						</div>
+					</div>
+
+					{#if error}
+						<div class="booking-error" role="alert">{error}</div>
+					{/if}
+
+					<div class="booking-step-nav booking-step-nav--split">
+						<button
+							type="button"
+							class="sp-btn booking-back-btn"
+							onclick={() => { internalStep = 3; }}
+							disabled={busy}
+						>← Back</button>
+						<button
+							type="button"
+							class="sp-btn sp-btn-primary booking-confirm-btn"
+							onclick={handlePaid}
+							disabled={busy}
+						>
+							{busy ? 'Confirming…' : "✓ I've paid"}
 						</button>
 					</div>
 				{/if}
@@ -803,5 +919,133 @@
   font-weight: 600;
   cursor: pointer;
   border-radius: 12px;
+}
+
+/* ── UPI Payment Step ────────────────────────────────────────── */
+.pay-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--sp-border);
+  background: var(--sp-surface);
+  padding: 18px;
+}
+
+.pay-amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pay-amount-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sp-muted);
+}
+
+.pay-amount-value {
+  font-family: var(--sp-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--sp-gold);
+  letter-spacing: -0.02em;
+}
+
+.pay-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pay-qr-img {
+  width: 180px;
+  height: 180px;
+  border-radius: 12px;
+  border: 1px solid var(--sp-border);
+  background: #fff;
+  display: block;
+}
+
+.pay-qr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--sp-brand) 35%, var(--sp-border));
+  background: color-mix(in srgb, var(--sp-brand) 8%, transparent);
+  color: var(--sp-brand);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pay-qr-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sp-brand);
+  animation: payPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes payPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.pay-upi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sp-border) 40%, transparent);
+}
+
+.pay-upi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sp-muted);
+}
+
+.pay-upi-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sp-text);
+  letter-spacing: 0.02em;
+}
+
+.pay-apps-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pay-app-tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--sp-border);
+  background: var(--sp-surface-strong);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sp-muted);
+}
+
+.pay-demo-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--sp-accent) 30%, var(--sp-border));
+  background: color-mix(in srgb, var(--sp-accent) 6%, transparent);
+  color: color-mix(in srgb, var(--sp-accent) 80%, var(--sp-text));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 </style>
